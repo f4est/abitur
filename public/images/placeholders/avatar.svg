@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" fill="none">
+  <circle cx="100" cy="100" r="98" fill="#AAC9CE" stroke="#3B8EA5" stroke-width="4"/>
+  
+  <!-- Верхняя часть (голова) -->
+  <circle cx="100" cy="80" r="40" fill="#FFFFFF"/>
+  
+  <!-- Нижняя часть (тело) -->
+  <path d="M50 180C50 140 70 130 100 130C130 130 150 140 150 180" fill="#FFFFFF"/>
+  
+  <!-- Детали -->
+  <circle cx="85" cy="75" r="5" fill="#3B8EA5"/>
+  <circle cx="115" cy="75" r="5" fill="#3B8EA5"/>
+  <path d="M85 95C85 95 100 105 115 95" stroke="#3B8EA5" stroke-width="3" stroke-linecap="round"/>
+</svg> 

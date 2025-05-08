@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String
+  name          String
+  role          Role     @default(USER)
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  testResults   TestResult[]
+  savedSchools  SavedSchool[]
+  reviews       Review[]
+  resetCode     String?
+  resetCodeExpires DateTime?
+}
+
+model School {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String
+  address         String
+  coordinates     String?
+  logoUrl         String?
+  websiteUrl      String?
+  contacts        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  photos          SchoolPhoto[]
+  programs        EducationalProgram[]
+  savedByUsers    SavedSchool[]
+  reviews         Review[]
+}
+
+model SchoolPhoto {
+  id        Int      @id @default(autoincrement())
+  url       String
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
+
+model EducationalProgram {
+  id            Int     @id @default(autoincrement())
+  name          String
+  code          String?
+  description   String
+  duration      String
+  price         Float?
+  schoolId      Int
+  school        School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  examRequirements ExamRequirement[]
+}
+
+model ExamRequirement {
+  id          Int     @id @default(autoincrement())
+  examName    String
+  minScore    Int?
+  programId   Int
+  program     EducationalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+}
+
+model TestQuestion {
+  id          Int     @id @default(autoincrement())
+  question    String
+  options     String  // JSON строка с вариантами ответов
+  category    String
+  weights     String? // JSON строка с весами для результатов по вариантам ответов
+}
+
+model TestResult {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results     String   // JSON строка с результатами теста
+  createdAt   DateTime @default(now())
+}
+
+model SavedSchool {
+  userId    Int
+  schoolId  Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, schoolId])
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  userName    String
+  rating      Int
+  text        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isApproved  Boolean  @default(false)
+}
+
+enum Role {
+  USER
+  ADMIN
+} 
