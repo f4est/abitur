@@ -15,6 +15,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Преобразуем email в нижний регистр
+    const emailLower = email.toLowerCase()
+
     // Хеширование введенного кода для сравнения с хранящимся
     const resetCodeHash = crypto
       .createHash('sha256')
@@ -23,7 +26,7 @@ export default defineEventHandler(async (event) => {
 
     // Поиск пользователя
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email: emailLower }
     })
 
     if (!user) {

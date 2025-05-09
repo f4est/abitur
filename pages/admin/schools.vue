@@ -472,9 +472,12 @@ const schoolForm = ref({
   name: '',
   address: '',
   description: '',
-  websiteUrl: '',
-  contacts: '',
-  programsList: []
+  website: '',
+  email: '',
+  phone: '',
+  category: '',
+  location: null,
+  programs: []
 })
 
 // Список категорий
@@ -500,21 +503,20 @@ function clearMessages() {
   }, 3000)
 }
 
-// Токен для API-запросов
-const token = process.client ? localStorage.getItem('token') : null
-
 // Загрузка школ
 async function loadSchools() {
   isLoading.value = true
   try {
+    if (!process.client) return;
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+
     const { data, error } = await useFetch('/api/schools', {
       headers: { 'Authorization': `Bearer ${token}` },
-      query: {
-        page: currentPage.value,
-        limit,
-        search: searchQuery.value,
-        category: categoryFilter.value
-      },
       key: `admin-schools-${currentPage.value}-${searchQuery.value}-${categoryFilter.value}-${Date.now()}`
     })
     
@@ -522,11 +524,13 @@ async function loadSchools() {
       throw new Error('Ошибка загрузки учебных заведений')
     }
     
-    schools.value = data.value.body || []
-    totalSchools.value = data.value.total || schools.value.length
+    schools.value = data.value && data.value.body ? data.value.body : []
+    totalSchools.value = data.value && data.value.total ? data.value.total : (schools.value ? schools.value.length : 0)
+    
+    console.log('Загружено учебных заведений:', schools.value ? schools.value.length : 0)
   } catch (error) {
     console.error('Ошибка загрузки учебных заведений:', error)
-    errorMessage.value = 'Не удалось загрузить список учебных заведений. Пожалуйста, попробуйте позже.'
+    errorMessage.value = 'Не удалось загрузить учебные заведения. Пожалуйста, попробуйте позже.'
     clearMessages()
     schools.value = []
   } finally {
@@ -540,16 +544,25 @@ async function addSchool() {
   
   isSubmitting.value = true
   try {
+    if (!process.client) return;
+    
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+    
     // Подготовка данных для отправки
     const schoolData = {
       name: schoolForm.value.name,
       address: schoolForm.value.address,
       description: schoolForm.value.description || '',
-      websiteUrl: schoolForm.value.websiteUrl || '',
-      contacts: schoolForm.value.contacts || '',
+      websiteUrl: schoolForm.value.website || '',
+      email: schoolForm.value.email || '',
+      phone: schoolForm.value.phone || '',
       coordinates: schoolForm.value.location || null,
       category: schoolForm.value.category,
-      programs: schoolForm.value.programsList
+      programs: schoolForm.value.programs
         .filter(p => p.name && p.name.trim()) // Только программы с названием
         .map(program => ({
           name: program.name.trim(),
@@ -572,8 +585,10 @@ async function addSchool() {
     }
     
     // Добавление новой школы в список
-    schools.value.unshift(data.value.body)
-    totalSchools.value++
+    if (data.value && data.value.body) {
+      schools.value.unshift(data.value.body)
+      totalSchools.value++
+    }
     
     // Закрыть модальное окно и очистить форму
     openAddModal.value = false
@@ -598,9 +613,12 @@ function editSchool(school) {
     name: school.name,
     address: school.address || '',
     description: school.description || '',
-    websiteUrl: school.websiteUrl || '',
-    contacts: school.contacts || '',
-    programsList: school.programs || []
+    website: school.websiteUrl || school.website || '',
+    email: school.email || '',
+    phone: school.phone || '',
+    category: school.category || '',
+    location: school.coordinates || null,
+    programs: Array.isArray(school.programs) ? [...school.programs] : []
   }
   openEditModal.value = true
 }
@@ -611,23 +629,35 @@ async function updateSchool() {
   
   isSubmitting.value = true
   try {
+    if (!process.client) return;
+    
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+    
     // Подготовка данных для отправки
     const schoolData = {
       name: schoolForm.value.name,
       address: schoolForm.value.address,
-      description: schoolForm.value.description,
-      websiteUrl: schoolForm.value.websiteUrl,
-      contacts: schoolForm.value.contacts,
-      coordinates: schoolForm.value.location,
-      programs: schoolForm.value.programsList.map(program => ({
-        id: program.id,
-        name: program.name,
-        code: program.code || null,
-        description: program.description || '',
-        duration: program.duration || '',
-        price: program.price ? parseFloat(program.price) : null,
-        category: program.category || null
-      }))
+      description: schoolForm.value.description || '',
+      websiteUrl: schoolForm.value.website || '',
+      email: schoolForm.value.email || '',
+      phone: schoolForm.value.phone || '',
+      coordinates: schoolForm.value.location || null,
+      category: schoolForm.value.category,
+      programs: schoolForm.value.programs
+        .filter(p => p && p.name) // Фильтруем только программы с именем
+        .map(program => ({
+          id: program.id || undefined,
+          name: program.name,
+          code: program.code || '',
+          description: program.description || '',
+          duration: program.duration || '',
+          price: program.price ? parseFloat(program.price) : null,
+          category: program.category || null
+        }))
     }
 
     // Выполняем запрос к API
@@ -642,9 +672,11 @@ async function updateSchool() {
     }
     
     // Обновление школы в списке
-    const index = schools.value.findIndex(s => s.id === schoolForm.value.id)
-    if (index !== -1) {
-      schools.value[index] = { ...schools.value[index], ...data.value.body }
+    if (data.value && data.value.body) {
+      const index = schools.value.findIndex(s => s.id === schoolForm.value.id)
+      if (index !== -1) {
+        schools.value[index] = { ...schools.value[index], ...data.value.body }
+      }
     }
     
     // Закрыть модальное окно и очистить форму
@@ -675,6 +707,14 @@ async function deleteSchool() {
   
   isSubmitting.value = true
   try {
+    if (!process.client) return;
+    
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+    
     const { error } = await useFetch(`/api/schools/${schoolToDelete.value.id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -732,20 +772,23 @@ function resetForm() {
     name: '',
     address: '',
     description: '',
-    websiteUrl: '',
-    contacts: '',
-    programsList: []
+    website: '',
+    email: '',
+    phone: '',
+    category: '',
+    location: null,
+    programs: []
   }
 }
 
 // Добавление программы
 function addProgram() {
-  schoolForm.value.programsList.push({ name: '' })
+  schoolForm.value.programs.push({ name: '' })
 }
 
 // Удаление программы
 function removeProgram(index) {
-  schoolForm.value.programsList.splice(index, 1)
+  schoolForm.value.programs.splice(index, 1)
 }
 
 // Пагинация

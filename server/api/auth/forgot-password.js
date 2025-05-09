@@ -16,10 +16,12 @@ export default defineEventHandler(async (event) => {
 
     console.log('[FORGOT PASSWORD] Получен запрос для:', email)
 
-    // Проверка, существует ли пользователь с таким email
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
+    // Нормализуем email
+    const normalizedEmail = email.toLowerCase()
+
+    // Поиск пользователя (напрямую по email в нижнем регистре)
+    const users = await prisma.user.findMany()
+    const user = users.find(u => u.email.toLowerCase() === normalizedEmail)
 
     if (!user) {
       console.log('[FORGOT PASSWORD] Пользователь не найден:', email)

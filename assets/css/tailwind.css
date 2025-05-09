@@ -17,6 +17,41 @@
 }
 
 @layer components {
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  /* Уведомления */
+  .alert {
+    @apply p-4 rounded-lg border-l-4;
+  }
+  
+  .alert-info {
+    @apply bg-blue-50 border-l-blue-500 text-blue-700;
+  }
+  
+  .alert-success {
+    @apply bg-green-50 border-l-success-green text-green-700;
+  }
+  
+  .alert-warning {
+    @apply bg-yellow-50 border-l-warning-yellow text-yellow-700;
+  }
+  
+  .alert-error {
+    @apply bg-red-50 border-l-error-red text-red-700;
+  }
+  
+  /* Эффекты при наведении */
+  .hover-lift {
+    @apply transition duration-300 transform hover:-translate-y-1 hover:shadow-medium;
+  }
+  
+  .hover-scale {
+    @apply transition duration-300 transform hover:scale-105;
+  }
+  
+  /* Эффекты при наведении */
   .btn {
     @apply inline-flex items-center justify-center py-2 px-4 rounded transition-colors;
   }

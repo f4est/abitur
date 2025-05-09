@@ -267,11 +267,21 @@ const submitReview = async () => {
       return
     }
     
+    const token = localStorage.getItem('token')
+    if (!token) {
+      alert('Для отправки отзыва необходимо авторизоваться')
+      isSubmitting.value = false
+      return
+    }
+    
     // Если редактируем существующий отзыв
     if (editingReview.value) {
       const response = await fetch(`/api/reviews/${editingReview.value.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           userId: props.currentUser.id,
           rating: newReview.value.rating,
@@ -296,7 +306,10 @@ const submitReview = async () => {
     else {
       const response = await fetch('/api/reviews', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           schoolId: props.schoolId,
           userId: props.currentUser.id,
@@ -337,9 +350,18 @@ const editReview = (review) => {
 const deleteReview = async (reviewId) => {
   if (!confirm('Вы уверены, что хотите удалить этот отзыв?')) return
   
+  const token = localStorage.getItem('token')
+  if (!token) {
+    alert('Для удаления отзыва необходимо авторизоваться')
+    return
+  }
+  
   try {
-    const response = await fetch(`/api/reviews/${reviewId}?userId=${props.currentUser.id}`, {
-      method: 'DELETE'
+    const response = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     })
     
     if (response.ok) {
@@ -355,10 +377,19 @@ const deleteReview = async (reviewId) => {
 }
 
 const approveReview = async (reviewId) => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    alert('Для одобрения отзыва необходимо авторизоваться как администратор')
+    return
+  }
+  
   try {
     const response = await fetch(`/api/reviews/approve/${reviewId}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
         adminId: props.currentUser.id,
         isApproved: true

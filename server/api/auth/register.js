@@ -19,9 +19,12 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Преобразуем email в нижний регистр
+    const emailLower = email.toLowerCase()
+
     // Проверка, существует ли пользователь
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: emailLower }
     })
 
     if (existingUser) {
@@ -37,7 +40,7 @@ export default defineEventHandler(async (event) => {
     // Создание пользователя
     const user = await prisma.user.create({
       data: {
-        email,
+        email: emailLower,
         password: hashedPassword,
         name
       }

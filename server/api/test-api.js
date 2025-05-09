@@ -10,7 +10,8 @@ const verifyToken = (event) => {
 
   const token = authHeader.split(' ')[1]
   try {
-    return jwt.verify(token, process.env.JWT_SECRET)
+    const config = useRuntimeConfig()
+    return jwt.verify(token, config.JWT_SECRET)
   } catch (error) {
     return null
   }
@@ -23,10 +24,10 @@ const isAdmin = (user) => {
 
 export default defineEventHandler(async (event) => {
   const method = getMethod(event)
-  const url = getRequestURL(event)
+  const url = getRequestURL(event).pathname
   
   // Получить все вопросы теста
-  if (method === 'GET' && url.pathname === '/api/test-api/questions') {
+  if (method === 'GET' && url === '/api/test-api/questions') {
     const user = verifyToken(event)
     if (!user) {
       return {
@@ -37,9 +38,24 @@ export default defineEventHandler(async (event) => {
     
     try {
       const questions = await prisma.testQuestion.findMany()
+      
+      // Преобразуем JSON строки в объекты JavaScript
+      const formattedQuestions = questions.map(q => {
+        try {
+          return {
+            ...q,
+            options: q.options ? JSON.parse(q.options) : [],
+            weights: q.weights ? JSON.parse(q.weights) : {}
+          }
+        } catch (e) {
+          // В случае ошибки парсинга оставляем как есть
+          return q
+        }
+      })
+      
       return { 
         statusCode: 200,
-        body: questions 
+        body: formattedQuestions 
       }
     } catch (error) {
       console.error('Ошибка получения вопросов теста:', error)
@@ -51,7 +67,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Получить конкретный вопрос
-  if (method === 'GET' && url.pathname.match(/\/api\/test-api\/questions\/\d+$/)) {
+  if (method === 'GET' && url.match(/\/api\/test-api\/questions\/\d+$/)) {
     const user = verifyToken(event)
     if (!user) {
       return {
@@ -60,7 +76,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    const id = parseInt(url.pathname.split('/').pop())
+    const id = parseInt(url.split('/').pop())
     
     try {
       const question = await prisma.testQuestion.findUnique({
@@ -74,9 +90,24 @@ export default defineEventHandler(async (event) => {
         }
       }
       
-      return {
-        statusCode: 200,
-        body: question
+      // Преобразуем JSON строки в объекты JavaScript
+      try {
+        const formattedQuestion = {
+          ...question,
+          options: question.options ? JSON.parse(question.options) : [],
+          weights: question.weights ? JSON.parse(question.weights) : {}
+        }
+        
+        return {
+          statusCode: 200,
+          body: formattedQuestion
+        }
+      } catch (e) {
+        // В случае ошибки парсинга возвращаем оригинальные данные
+        return {
+          statusCode: 200,
+          body: question
+        }
       }
     } catch (error) {
       console.error('Ошибка получения вопроса:', error)
@@ -88,7 +119,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // ADMIN: создать вопрос
-  if (method === 'POST' && url.pathname === '/api/test-api/questions') {
+  if (method === 'POST' && url === '/api/test-api/questions') {
     const user = verifyToken(event)
     if (!user || !isAdmin(user)) {
       return {
@@ -100,18 +131,17 @@ export default defineEventHandler(async (event) => {
     const body = await readBody(event)
     const { question, options, category, weights } = body
 
-    if (!question || !options || !category) {
+    if (!question || !category) {
       return {
         statusCode: 400,
-        body: { message: 'Все поля обязательны для заполнения' }
+        body: { message: 'Вопрос и категория обязательны для заполнения' }
       }
     }
 
     try {
-      // Преобразуем options в JSON строку, если это массив или объект
-      const optionsStr = typeof options === 'string' ? options : JSON.stringify(options)
-      // Преобразуем weights в JSON строку, если есть и это объект
-      const weightsStr = weights ? (typeof weights === 'string' ? weights : JSON.stringify(weights)) : null
+      // Преобразуем options и weights в JSON строки
+      const optionsStr = Array.isArray(options) ? JSON.stringify(options) : (options || '[]')
+      const weightsStr = weights ? (typeof weights === 'string' ? weights : JSON.stringify(weights)) : '{}'
 
       const newQuestion = await prisma.testQuestion.create({
         data: {
@@ -121,10 +151,25 @@ export default defineEventHandler(async (event) => {
           weights: weightsStr
         }
       })
-
-      return { 
-        statusCode: 201, 
-        body: newQuestion 
+      
+      // Преобразуем обратно в объекты для ответа
+      try {
+        const formattedQuestion = {
+          ...newQuestion,
+          options: JSON.parse(newQuestion.options),
+          weights: JSON.parse(newQuestion.weights)
+        }
+        
+        return { 
+          statusCode: 201, 
+          body: formattedQuestion 
+        }
+      } catch (e) {
+        // В случае ошибки парсинга возвращаем оригинальные данные
+        return { 
+          statusCode: 201, 
+          body: newQuestion 
+        }
       }
     } catch (error) {
       console.error('Ошибка создания вопроса:', error)
@@ -136,7 +181,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // ADMIN: обновить вопрос
-  if (method === 'PUT' && url.pathname.match(/\/api\/test-api\/questions\/\d+$/)) {
+  if (method === 'PUT' && url.match(/\/api\/test-api\/questions\/\d+$/)) {
     const user = verifyToken(event)
     if (!user || !isAdmin(user)) {
       return {
@@ -145,29 +190,68 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const id = parseInt(url.pathname.split('/').pop())
+    const id = parseInt(url.split('/').pop())
     const body = await readBody(event)
-    const { question, options, category, weights } = body
-
+    
     try {
-      // Преобразуем options в JSON строку, если это массив или объект
-      const optionsStr = typeof options === 'string' ? options : JSON.stringify(options)
-      // Преобразуем weights в JSON строку, если есть и это объект
-      const weightsStr = weights ? (typeof weights === 'string' ? weights : JSON.stringify(weights)) : null
+      // Проверяем существование вопроса
+      const existingQuestion = await prisma.testQuestion.findUnique({
+        where: { id }
+      })
+      
+      if (!existingQuestion) {
+        return {
+          statusCode: 404,
+          body: { message: 'Вопрос не найден' }
+        }
+      }
+      
+      // Готовим данные для обновления
+      const updateData = {}
+      
+      if (body.question) {
+        updateData.question = body.question
+      }
+      
+      if (body.category) {
+        updateData.category = body.category
+      }
+      
+      if (body.options) {
+        updateData.options = Array.isArray(body.options) 
+          ? JSON.stringify(body.options) 
+          : (typeof body.options === 'string' ? body.options : '[]')
+      }
+      
+      if (body.weights) {
+        updateData.weights = typeof body.weights === 'string' 
+          ? body.weights 
+          : JSON.stringify(body.weights)
+      }
 
       const updatedQuestion = await prisma.testQuestion.update({
         where: { id },
-        data: {
-          question,
-          options: optionsStr,
-          category,
-          weights: weightsStr
-        }
+        data: updateData
       })
-
-      return { 
-        statusCode: 200, 
-        body: updatedQuestion 
+      
+      // Преобразуем обратно в объекты для ответа
+      try {
+        const formattedQuestion = {
+          ...updatedQuestion,
+          options: JSON.parse(updatedQuestion.options),
+          weights: updatedQuestion.weights ? JSON.parse(updatedQuestion.weights) : {}
+        }
+        
+        return { 
+          statusCode: 200, 
+          body: formattedQuestion 
+        }
+      } catch (e) {
+        // В случае ошибки парсинга возвращаем оригинальные данные
+        return { 
+          statusCode: 200, 
+          body: updatedQuestion 
+        }
       }
     } catch (error) {
       console.error('Ошибка обновления вопроса:', error)
@@ -179,7 +263,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // ADMIN: удалить вопрос
-  if (method === 'DELETE' && url.pathname.match(/\/api\/test-api\/questions\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/\/api\/test-api\/questions\/\d+$/)) {
     const user = verifyToken(event)
     if (!user || !isAdmin(user)) {
       return {
@@ -188,9 +272,21 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const id = parseInt(url.pathname.split('/').pop())
+    const id = parseInt(url.split('/').pop())
     
     try {
+      // Проверяем существование вопроса
+      const existingQuestion = await prisma.testQuestion.findUnique({
+        where: { id }
+      })
+      
+      if (!existingQuestion) {
+        return {
+          statusCode: 404,
+          body: { message: 'Вопрос не найден' }
+        }
+      }
+
       await prisma.testQuestion.delete({
         where: { id }
       })
@@ -209,7 +305,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Сохранить результаты теста
-  if (method === 'POST' && url.pathname === '/api/test-api/results') {
+  if (method === 'POST' && url === '/api/test-api/results') {
     const user = verifyToken(event)
     if (!user) {
       return {
@@ -229,7 +325,7 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
-      // Преобразуем results в JSON строку, если это объект
+      // Преобразуем results в JSON строку
       const resultsStr = typeof results === 'string' ? results : JSON.stringify(results)
 
       const testResult = await prisma.testResult.create({
@@ -245,39 +341,6 @@ export default defineEventHandler(async (event) => {
       }
     } catch (error) {
       console.error('Ошибка сохранения результатов теста:', error)
-      return {
-        statusCode: 500,
-        body: { message: 'Внутренняя ошибка сервера' }
-      }
-    }
-  }
-
-  // Получить результаты теста для текущего пользователя
-  if (method === 'GET' && url.pathname === '/api/test-api/results') {
-    const user = verifyToken(event)
-    if (!user) {
-      return {
-        statusCode: 401,
-        body: { message: 'Требуется авторизация' }
-      }
-    }
-
-    try {
-      const results = await prisma.testResult.findMany({
-        where: {
-          userId: user.id
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      })
-
-      return { 
-        statusCode: 200, 
-        body: results 
-      }
-    } catch (error) {
-      console.error('Ошибка получения результатов теста:', error)
       return {
         statusCode: 500,
         body: { message: 'Внутренняя ошибка сервера' }

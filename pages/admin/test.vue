@@ -425,14 +425,15 @@ const loadQuestions = async () => {
     }
     
     // Используем новое API
-    const { data } = await $fetch('/api/test-api/questions', {
+    const response = await $fetch('/api/test-api/questions', {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
     
-    if (data && data.body) {
-      questions.value = data.body.map(q => ({
+    if (response && response.body) {
+      questions.value = response.body.map(q => ({
         ...q,
         options: parseOptions(q.options)
       }))
@@ -456,10 +457,16 @@ const loadQuestions = async () => {
       if (!categories.value.includes('Другое')) {
         categories.value.push('Другое')
       }
+      
+      console.log('Загружено вопросов теста:', questions.value.length)
     } else {
+      questions.value = []
+      filteredQuestions.value = []
       console.error('Ошибка загрузки вопросов: данные не получены')
     }
   } catch (error) {
+    questions.value = []
+    filteredQuestions.value = []
     console.error('Ошибка загрузки вопросов:', error)
   } finally {
     isLoading.value = false

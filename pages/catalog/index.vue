@@ -170,9 +170,9 @@ const extractPrograms = async () => {
     if (data && data.body) {
       data.body.forEach(program => {
         if (program && program.name) {
-          programsSet.add(program.name)
+      programsSet.add(program.name)
         }
-      })
+  })
       // Обновить ref массив
       programs.value = Array.from(programsSet).sort()
     }
@@ -305,7 +305,7 @@ onMounted(async () => {
       
       // Проверяем, что школы есть и они не пустые
       if (schools.value && schools.value.length > 0) {
-        cities.value = extractCities(schools.value)
+      cities.value = extractCities(schools.value)
         // programs.value загружается в функции extractPrograms через отдельный запрос
         
         // Загружаем сохраненные школы если пользователь авторизован

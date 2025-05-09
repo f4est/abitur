@@ -234,15 +234,15 @@
         <div v-else class="space-y-4">
           <div v-for="question in filteredQuestions.slice(0, 5)" :key="question.id" class="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="text-base font-medium text-gray-800 pr-4">{{ question.text }}</h3>
+              <h3 class="text-base font-medium text-gray-800 pr-4">{{ question.question }}</h3>
               <span class="bg-skyway text-white text-xs px-2 py-1 rounded flex-shrink-0">{{ question.category }}</span>
             </div>
-            <div v-if="question.answers && question.answers.length" class="space-y-2 mb-3">
-              <div v-for="(answer, index) in question.answers" :key="index" class="flex items-start text-sm">
+            <div v-if="question.options && Array.isArray(question.options) && question.options.length" class="space-y-2 mb-3">
+              <div v-for="(option, index) in question.options" :key="index" class="flex items-start text-sm">
                 <div class="bg-gray-100 w-6 h-6 rounded-full flex items-center justify-center mr-2 flex-shrink-0">
                   {{ index + 1 }}
                 </div>
-                <div>{{ answer.text }}</div>
+                <div>{{ typeof option === 'string' ? option : option.text || JSON.stringify(option) }}</div>
               </div>
             </div>
             <div class="flex justify-end">
@@ -381,6 +381,8 @@ const isLoadingActions = ref(false)
 // Пользователи
 const users = ref([])
 const filteredUsers = computed(() => {
+  if (!users.value || !Array.isArray(users.value)) return []
+  
   if (!searchQuery.value) return users.value
   const query = searchQuery.value.toLowerCase()
   return users.value.filter(user => 
@@ -392,6 +394,8 @@ const filteredUsers = computed(() => {
 // Школы
 const schools = ref([])
 const filteredSchools = computed(() => {
+  if (!schools.value || !Array.isArray(schools.value)) return []
+  
   if (!searchQuery.value) return schools.value
   const query = searchQuery.value.toLowerCase()
   return schools.value.filter(school => 
@@ -404,6 +408,8 @@ const filteredSchools = computed(() => {
 const questions = ref([])
 const questionCategory = ref('')
 const filteredQuestions = computed(() => {
+  if (!questions.value || !Array.isArray(questions.value)) return []
+  
   let filtered = questions.value
   
   if (questionCategory.value) {
@@ -474,7 +480,9 @@ const loadUsers = async () => {
       throw new Error('Ошибка загрузки пользователей')
     }
     
-    users.value = data.value.body || []
+    // Убедимся, что data.value.body - это массив
+    users.value = Array.isArray(data.value.body) ? data.value.body : []
+    console.log('Загружено пользователей:', users.value.length)
   } catch (error) {
     console.error('Ошибка загрузки пользователей:', error)
     users.value = []
@@ -496,7 +504,9 @@ const loadSchools = async () => {
       throw new Error('Ошибка загрузки учебных заведений')
     }
     
-    schools.value = data.value.body || []
+    // Убедимся, что data.value.body - это массив
+    schools.value = Array.isArray(data.value.body) ? data.value.body : []
+    console.log('Загружено учебных заведений:', schools.value.length)
   } catch (error) {
     console.error('Ошибка загрузки учебных заведений:', error)
     schools.value = []
@@ -518,7 +528,9 @@ const loadQuestions = async () => {
       throw new Error('Ошибка загрузки вопросов')
     }
     
-    questions.value = data.value.body || []
+    // Убедимся, что data.value.body - это массив
+    questions.value = Array.isArray(data.value.body) ? data.value.body : []
+    console.log('Загружено вопросов теста:', questions.value.length)
   } catch (error) {
     console.error('Ошибка загрузки вопросов:', error)
     questions.value = []

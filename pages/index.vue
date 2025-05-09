@@ -20,7 +20,7 @@
         </div>
         <div class="w-full md:w-1/2 flex justify-center">
           <!-- Место для персонажей -->
-          <div class="w-full h-60 sm:h-80 bg-skyway/20 rounded-lg flex items-center justify-center p-4">
+          <div class="w-full h-60 sm:h-80 bg-ashleigh/20 rounded-lg flex items-center justify-center p-4">
             <img src="/images/placeholders/school-photo.svg" alt="Абитуриенты" class="max-h-full rounded-lg" />
           </div>
         </div>
@@ -34,7 +34,7 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
           <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-skyway rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-ashleigh rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
               <span class="text-xl sm:text-2xl font-bold text-white">1</span>
             </div>
             <h3 class="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Пройдите тест</h3>
@@ -42,7 +42,7 @@
           </div>
           
           <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-skyway rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-ashleigh rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
               <span class="text-xl sm:text-2xl font-bold text-white">2</span>
             </div>
             <h3 class="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Изучите каталог</h3>
@@ -50,7 +50,7 @@
           </div>
           
           <div class="bg-white p-4 sm:p-6 rounded-xl shadow-sm text-center sm:col-span-2 md:col-span-1 sm:max-w-md md:max-w-none mx-auto sm:mx-auto md:mx-0 w-full">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-skyway rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-ashleigh rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
               <span class="text-xl sm:text-2xl font-bold text-white">3</span>
             </div>
             <h3 class="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Сохраните избранное</h3>
@@ -61,7 +61,7 @@
     </section>
 
     <!-- Преимущества -->
-    <section class="py-8 sm:py-12 bg-skyway/10 mb-6 sm:mb-12">
+    <section class="py-8 sm:py-12 bg-ashleigh/10 mb-6 sm:mb-12">
       <div class="container mx-auto px-4">
         <h2 class="text-xl sm:text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6 sm:mb-12">Почему стоит использовать нашу платформу</h2>
         

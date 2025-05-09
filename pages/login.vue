@@ -89,23 +89,38 @@ const login = async () => {
     })
     
     const data = await response.json()
+    console.log('Данные, полученные от сервера:', data)
     
-    if (response.ok && data.body) {
+    if (response.ok) {
+      // Получаем данные пользователя и токен напрямую из ответа
+      const { user, token } = data
+      
+      if (!user || !token) {
+        console.error('Неверный формат ответа от сервера:', data)
+        errorMessage.value = 'Ошибка входа: некорректный ответ от сервера'
+        return
+      }
+      
+      console.log('Сохраняем данные пользователя:', user)
+      console.log('Роль пользователя:', user.role)
+      
       // Сохраняем токен и данные пользователя
-      localStorage.setItem('token', data.body.token)
-      localStorage.setItem('user', JSON.stringify(data.body.user))
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
       
       // Вызываем событие для обновления DOM и сохранения в других вкладках
       window.dispatchEvent(new Event('storage'))
       
       // Перенаправляем на главную или админ-панель
-      if (data.body.user.role === 'ADMIN') {
+      if (user.role === 'ADMIN') {
+        console.log('Перенаправляем на админ-панель')
         router.push('/admin')
       } else {
+        console.log('Перенаправляем на главную')
         router.push('/')
       }
     } else {
-      errorMessage.value = data.body?.message || 'Ошибка входа. Пожалуйста, проверьте ваши учетные данные.'
+      errorMessage.value = data.message || 'Ошибка входа. Пожалуйста, проверьте ваши учетные данные.'
     }
   } catch (error) {
     console.error('Ошибка входа:', error)

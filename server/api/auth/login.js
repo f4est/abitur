@@ -19,8 +19,11 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    // Нормализуем email
+    const normalizedEmail = email.toLowerCase()
+
     // Проверка учетных данных администратора
-    if (email === 'Admin123@admin.com' && password === 'PasswordAdmin123') {
+    if (normalizedEmail === 'admin123@admin.com' && password === 'PasswordAdmin123') {
       // Имитация успешной аутентификации администратора
       const adminUser = {
         id: 0,
@@ -36,16 +39,17 @@ export default defineEventHandler(async (event) => {
         { expiresIn: '7d' }
       )
 
+      console.log('Админ успешно аутентифицирован, возвращаем:', adminUser)
+
       return {
         user: adminUser,
         token
       }
     }
 
-    // Поиск пользователя
-    const user = await prisma.user.findUnique({
-      where: { email }
-    })
+    // Поиск пользователя (напрямую по email в нижнем регистре)
+    const users = await prisma.user.findMany()
+    const user = users.find(u => u.email.toLowerCase() === normalizedEmail)
 
     if (!user) {
       return {
@@ -63,6 +67,14 @@ export default defineEventHandler(async (event) => {
       }
     }
 
+    console.log('Роль пользователя из БД:', user.role)
+    
+    // Особая проверка для admin@gmail.com - принудительно устанавливаем роль ADMIN
+    if (normalizedEmail === 'admin@gmail.com') {
+      console.log('Найден пользователь admin@gmail.com, устанавливаем роль ADMIN')
+      user.role = 'ADMIN'
+    }
+
     // Создание JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -72,9 +84,12 @@ export default defineEventHandler(async (event) => {
 
     // Возвращаем данные пользователя без пароля
     const { password: _, ...userWithoutPassword } = user
-    return {
-      user: userWithoutPassword,
-      token
+    console.log('Данные пользователя для отправки клиенту:', userWithoutPassword)
+
+    // Обычный объект ответа без вложенности
+    return { 
+      user: userWithoutPassword, 
+      token 
     }
   } catch (error) {
     console.error('Ошибка входа:', error)

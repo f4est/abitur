@@ -341,14 +341,19 @@ const totalPages = computed(() => Math.ceil(totalUsers.value / limit))
 
 // Фильтрация пользователей
 const filteredUsers = computed(() => {
+  // Проверка, что users.value существует и является массивом
+  if (!users.value || !Array.isArray(users.value)) {
+    return []
+  }
+  
   let result = [...users.value]
   
   // Фильтр по поисковому запросу
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(user => 
-      user.name.toLowerCase().includes(query) || 
-      user.email.toLowerCase().includes(query)
+      user.name?.toLowerCase().includes(query) || 
+      user.email?.toLowerCase().includes(query)
     )
   }
   
@@ -389,13 +394,18 @@ function clearMessages() {
   }, 3000)
 }
 
-// Токен для API-запросов
-const token = process.client ? localStorage.getItem('token') : null
-
 // Загрузка пользователей
 async function loadUsers() {
   isLoading.value = true
   try {
+    if (!process.client) return;
+
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+
     const { data, error } = await useFetch('/api/users', {
       headers: { 'Authorization': `Bearer ${token}` },
       key: `admin-users-${currentPage.value}-${searchQuery.value}-${roleFilter.value}-${Date.now()}`
@@ -405,8 +415,8 @@ async function loadUsers() {
       throw new Error('Ошибка загрузки пользователей')
     }
     
-    users.value = data.value.body || []
-    totalUsers.value = data.value.total || users.value.length
+    users.value = data.value && data.value.body ? data.value.body : []
+    totalUsers.value = data.value && data.value.total ? data.value.total : users.value.length
   } catch (error) {
     console.error('Ошибка загрузки пользователей:', error)
     errorMessage.value = 'Не удалось загрузить пользователей. Пожалуйста, попробуйте позже.'
@@ -423,6 +433,8 @@ async function addUser() {
   
   isSubmitting.value = true
   try {
+    const token = localStorage.getItem('token')
+    
     const { data, error } = await useFetch('/api/users', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` },
@@ -462,10 +474,10 @@ async function addUser() {
 function editUser(user) {
   userForm.value = {
     id: user.id,
-    name: user.name,
-    email: user.email,
+    name: user.name || '',
+    email: user.email || '',
     password: '',
-    role: user.role
+    role: user.role || 'USER'
   }
   openEditModal.value = true
 }
@@ -476,6 +488,8 @@ async function updateUser() {
   
   isSubmitting.value = true
   try {
+    const token = localStorage.getItem('token')
+    
     // Подготовка данных для обновления
     const updateData = {
       name: userForm.value.name,
@@ -532,6 +546,8 @@ async function deleteUser() {
   
   isSubmitting.value = true
   try {
+    const token = localStorage.getItem('token')
+    
     const { error } = await useFetch(`/api/users/${userToDelete.value.id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
@@ -608,6 +624,7 @@ function useDebounce(fn, delay) {
 // Проверка URL на наличие параметров
 onMounted(() => {
   const route = useRoute()
+  const token = process.client ? localStorage.getItem('token') : null
   
   // Если есть параметр edit, открываем модальное окно редактирования
   if (route.query.edit) {
@@ -620,7 +637,11 @@ onMounted(() => {
         
         if (error.value) throw new Error('Не удалось загрузить данные пользователя')
         
-        editUser(data.value.body)
+        if (data.value && data.value.body) {
+          editUser(data.value.body)
+        } else {
+          throw new Error('Данные пользователя не найдены')
+        }
       } catch (error) {
         console.error('Ошибка при загрузке пользователя для редактирования:', error)
         errorMessage.value = 'Не удалось загрузить пользователя для редактирования'
@@ -642,7 +663,11 @@ onMounted(() => {
         
         if (error.value) throw new Error('Не удалось загрузить данные пользователя')
         
-        confirmDelete(data.value.body)
+        if (data.value && data.value.body) {
+          confirmDelete(data.value.body)
+        } else {
+          throw new Error('Данные пользователя не найдены')
+        }
       } catch (error) {
         console.error('Ошибка при загрузке пользователя для удаления:', error)
         errorMessage.value = 'Не удалось загрузить пользователя для удаления'
