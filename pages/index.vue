@@ -21,7 +21,7 @@
         <div class="w-full md:w-1/2 flex justify-center">
           <!-- Место для персонажей -->
           <div class="w-full h-60 sm:h-80 bg-ashleigh/20 rounded-lg flex items-center justify-center p-4">
-            <img src="/images/placeholders/school-photo.svg" alt="Абитуриенты" class="max-h-full rounded-lg" />
+            <img src="/images/placeholders-png/persones.png" alt="Абитуриенты" class="max-h-full rounded-lg" />
           </div>
         </div>
       </div>
