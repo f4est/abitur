@@ -383,15 +383,15 @@
     
     <!-- Модальное окно выбора местоположения на карте -->
     <div v-if="openLocationModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <h2 class="text-xl font-semibold mb-4">Выбор местоположения на карте</h2>
         
-        <div v-if="isMapLoading" class="text-center py-12">
+        <div v-if="isMapLoading" class="text-center py-12 flex-grow">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-ashleigh"></div>
           <p class="mt-2 text-gray-700">Загрузка карты...</p>
         </div>
         
-        <div v-else class="h-96 border rounded-lg mb-4">
+        <div v-else class="h-96 border rounded-lg mb-4 flex-grow relative">
           <LocationEditor 
             :initial-location="schoolForm.location" 
             :address="schoolForm.address"
@@ -399,7 +399,7 @@
           />
         </div>
         
-        <div class="flex justify-end">
+        <div class="flex justify-end mt-2">
           <button
             type="button"
             @click="openLocationModal = false"
@@ -751,7 +751,16 @@ function editLocation() {
 
 // Сохранение местоположения
 function saveLocation(location) {
-  schoolForm.value.location = location
+  schoolForm.value.location = {
+    lat: location.lat, 
+    lng: location.lng
+  }
+  
+  // Обновляем адрес, если он был получен
+  if (location.address) {
+    schoolForm.value.address = location.address
+  }
+  
   openLocationModal.value = false
 }
 

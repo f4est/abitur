@@ -101,13 +101,17 @@
       <div v-for="review in reviews" :key="review.id" class="border-b border-gray-200 pb-5 last:border-b-0">
         <div class="flex justify-between items-start mb-2">
           <div class="flex items-center">
-            <img 
-              :src="review.user?.avatarUrl || '/images/placeholders-png/avatar.png'" 
-              alt="Аватар пользователя"
-              class="w-10 h-10 rounded-full object-cover mr-3" 
-            />
+            <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+              <ImageLoader 
+                :src="review.user?.avatarUrl"
+                :alt="review.authorName || 'Пользователь'"
+                placeholder-type="avatar"
+                :show-initials="true"
+                :name="review.authorName"
+              />
+            </div>
             <div>
-              <h4 class="font-medium text-gray-900">{{ review.userName }}</h4>
+              <h4 class="font-medium text-gray-900">{{ review.authorName }}</h4>
               <div class="flex items-center">
                 <div class="flex">
                   <template v-for="i in 5" :key="i">
@@ -179,6 +183,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import ImageLoader from '~/components/ImageLoader.vue'
 
 const props = defineProps({
   schoolId: {

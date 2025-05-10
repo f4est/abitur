@@ -1,31 +1,11 @@
-import prisma from '../utils/prisma'
+import { prisma } from '~/server/db/prisma'
+import { verifyToken, isAdmin } from '~/server/utils/auth'
 import jwt from 'jsonwebtoken'
-
-// Проверка авторизации
-const verifyToken = (event) => {
-  const authHeader = getRequestHeader(event, 'authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
-  }
-
-  const token = authHeader.split(' ')[1]
-  try {
-    const config = useRuntimeConfig()
-    return jwt.verify(token, config.JWT_SECRET)
-  } catch (error) {
-    return null
-  }
-}
-
-// Проверка прав администратора
-const isAdmin = (user) => {
-  return user && user.role === 'ADMIN'
-}
 
 export default defineEventHandler(async (event) => {
   try {
     // Проверяем авторизацию
-    const user = verifyToken(event)
+    const user = await verifyToken(event)
     if (!user) {
       return {
         statusCode: 401,
@@ -44,7 +24,10 @@ export default defineEventHandler(async (event) => {
             description: true,
             duration: true,
             price: true,
-            category: true
+            schoolId: true,
+            createdAt: true,
+            updatedAt: true,
+            examRequirements: true
           }
         },
         _count: {

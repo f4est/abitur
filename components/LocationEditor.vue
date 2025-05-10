@@ -1,296 +1,160 @@
 <template>
-  <div class="h-full relative">
-    <div ref="mapContainer" class="h-full w-full rounded-lg overflow-hidden"></div>
-    
-    <div class="absolute top-4 left-4 z-10 w-full max-w-sm">
-      <div class="flex">
-        <input 
-          v-model="searchQuery" 
-          @keyup.enter="searchAddress"
-          type="text" 
-          placeholder="Поиск адреса..." 
-          class="px-3 py-2 border border-gray-300 rounded-l-lg flex-grow focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none shadow-sm"
-        />
-        <button 
-          @click="searchAddress"
-          class="px-3 py-2 bg-ashleigh text-white rounded-r-lg hover:bg-opacity-90 shadow-sm"
-        >
-          🔍
-        </button>
+  <div class="relative w-full h-full">
+    <!-- Панель управления над картой -->
+    <div class="absolute top-0 left-0 right-0 z-[2000] bg-white/90 backdrop-blur-sm p-4 rounded-b-lg shadow-lg">
+      <!-- Поле поиска -->
+      <div class="mb-4">
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Поиск места..."
+            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            @input="handleSearch"
+          />
+          <!-- Результаты поиска -->
+          <div
+            v-if="searchResults.length > 0"
+            class="absolute z-[2001] w-full mt-1 bg-white rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          >
+            <div
+              v-for="result in searchResults"
+              :key="result.id"
+              class="px-4 py-2 cursor-pointer hover:bg-gray-100"
+              @click="selectLocation(result)"
+            >
+              {{ result.name }}
+            </div>
+          </div>
+        </div>
       </div>
-      
-      <!-- Результаты поиска -->
-      <div v-if="searchResults.length > 0" class="mt-2 bg-white rounded-lg border border-gray-300 shadow-md max-h-60 overflow-y-auto">
-        <div 
-          v-for="(result, index) in searchResults" 
-          :key="index"
-          @click="selectSearchResult(result)"
-          class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
-        >
-          {{ result.display_name }}
+
+      <!-- Информация о координатах -->
+      <div class="flex justify-between items-center mb-4">
+        <div class="text-sm">
+          <span class="font-medium">Координаты:</span>
+          <span>{{ coordinates.lat.toFixed(6) }}, {{ coordinates.lng.toFixed(6) }}</span>
+        </div>
+        
+        <!-- Кнопки управления -->
+        <div class="flex space-x-2">
+          <button
+            @click="saveLocation"
+            class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Сохранить
+          </button>
+          <button
+            @click="$emit('cancel')"
+            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Отмена
+          </button>
         </div>
       </div>
     </div>
-    
-    <!-- Координаты маркера -->
-    <div class="absolute bottom-4 left-4 z-10 bg-white rounded-lg shadow-md px-3 py-2 text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center">
-      <span class="mr-2 mb-1 sm:mb-0">Координаты маркера:</span>
-      <div v-if="marker">
-        <span class="font-mono">{{ marker.lat.toFixed(6) }}, {{ marker.lng.toFixed(6) }}</span>
-      </div>
-      <div v-else>
-        <span class="italic">Маркер не установлен</span>
-      </div>
-    </div>
-    
-    <!-- Кнопка сохранения -->
-    <div class="absolute bottom-4 right-4 z-10">
-      <button 
-        @click="saveLocation"
-        class="px-3 py-2 bg-ashleigh text-white rounded-lg hover:bg-opacity-90 shadow-md disabled:opacity-50"
-        :disabled="!marker"
-      >
-        Сохранить местоположение
-      </button>
+
+    <!-- Контейнер для карты -->
+    <div class="w-full h-full">
+      <div ref="mapContainer" class="w-full h-full"></div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useYandexMap } from '~/composables/useYandexMap'
 
-// Входные параметры
 const props = defineProps({
   initialLocation: {
     type: Object,
-    default: () => null
-  },
-  address: {
-    type: String,
-    default: ''
+    default: () => ({ lat: 55.7558, lng: 37.6173 })
   }
 })
 
-// Определение событий
-const emit = defineEmits(['location-selected'])
+const emit = defineEmits(['save', 'cancel'])
 
-// Ссылка на контейнер карты
 const mapContainer = ref(null)
-
-// Карта и маркер
-const map = ref(null)
-const marker = ref(null)
-const isMapInitialized = ref(false)
-
-// Поиск
-const searchQuery = ref(props.address || '')
+const searchQuery = ref('')
 const searchResults = ref([])
-const isSearching = ref(false)
+const coordinates = ref(props.initialLocation)
 
-// Инициализация карты
-const initMap = () => {
-  // Если мы не на клиенте или карта уже инициализирована, то выходим
-  if (!process.client || isMapInitialized.value) return
-  
-  try {
-    // Создаем карту
-    map.value = L.map(mapContainer.value).setView([55.7558, 37.6173], 10) // Москва по умолчанию
-    
-    // Добавляем слой OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map.value)
-    
-    // Если есть начальное местоположение, устанавливаем маркер
-    if (props.initialLocation) {
-      marker.value = {
-        lat: props.initialLocation.lat,
-        lng: props.initialLocation.lng
-      }
-      
-      // Создаем маркер на карте
-      L.marker([marker.value.lat, marker.value.lng])
-        .addTo(map.value)
-        .bindPopup(props.address || 'Выбранное местоположение')
-        .openPopup()
-      
-      // Центрируем карту на маркере
-      map.value.setView([marker.value.lat, marker.value.lng], 15)
-    }
-    
-    // Если нет начального местоположения, но есть адрес, ищем его
-    else if (props.address) {
-      searchAddress()
-    }
-    
-    // Добавляем обработчик клика по карте
-    map.value.on('click', (e) => {
-      // Если маркер уже существует, удаляем его
-      map.value.eachLayer((layer) => {
-        if (layer instanceof L.Marker) {
-          map.value.removeLayer(layer)
-        }
-      })
-      
-      // Создаем новый маркер
-      marker.value = {
-        lat: e.latlng.lat,
-        lng: e.latlng.lng
-      }
-      
-      // Добавляем маркер на карту
-      L.marker([marker.value.lat, marker.value.lng])
-        .addTo(map.value)
-        .bindPopup('Выбранное местоположение')
-        .openPopup()
-      
-      // Получаем адрес по координатам (обратное геокодирование)
-      reverseGeocode(marker.value)
-    })
-    
-    isMapInitialized.value = true
-  } catch (error) {
-    console.error('Ошибка инициализации карты:', error)
-  }
-}
+let map = null
+let marker = null
 
-// Поиск адреса
-const searchAddress = async () => {
-  if (!searchQuery.value || isSearching.value) return
+onMounted(async () => {
+  const { initMap, searchLocation } = await useYandexMap()
   
-  isSearching.value = true
-  searchResults.value = []
+  map = await initMap(mapContainer.value, coordinates.value)
   
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery.value)}`)
-    
-    if (!response.ok) {
-      throw new Error('Ошибка поиска адреса')
-    }
-    
-    const data = await response.json()
-    searchResults.value = data
-    
-    // Если есть результаты, автоматически выбираем первый
-    if (data.length > 0) {
-      selectSearchResult(data[0])
-    }
-  } catch (error) {
-    console.error('Ошибка поиска адреса:', error)
-  } finally {
-    isSearching.value = false
-  }
-}
-
-// Выбор результата поиска
-const selectSearchResult = (result) => {
-  if (!map.value) return
+  // Добавляем маркер
+  marker = new window.ymaps.Placemark(
+    [coordinates.value.lat, coordinates.value.lng], 
+    {}, 
+    { draggable: true }
+  )
   
-  // Очищаем результаты поиска
-  searchResults.value = []
+  map.geoObjects.add(marker)
   
-  // Удаляем существующие маркеры
-  map.value.eachLayer((layer) => {
-    if (layer instanceof L.Marker) {
-      map.value.removeLayer(layer)
+  // Обработчик перетаскивания маркера
+  marker.events.add('dragend', () => {
+    const position = marker.geometry.getCoordinates()
+    coordinates.value = {
+      lat: position[0],
+      lng: position[1]
     }
   })
   
-  // Создаем новый маркер
-  marker.value = {
-    lat: parseFloat(result.lat),
-    lng: parseFloat(result.lon)
+  // Обработчик клика по карте
+  map.events.add('click', (e) => {
+    const position = e.get('coords')
+    coordinates.value = {
+      lat: position[0],
+      lng: position[1]
+    }
+    marker.geometry.setCoordinates(position)
+  })
+})
+
+const handleSearch = async () => {
+  if (!searchQuery.value) {
+    searchResults.value = []
+    return
   }
   
-  // Добавляем маркер на карту
-  L.marker([marker.value.lat, marker.value.lng])
-    .addTo(map.value)
-    .bindPopup(result.display_name)
-    .openPopup()
-  
-  // Центрируем карту на маркере
-  map.value.setView([marker.value.lat, marker.value.lng], 15)
-  
-  // Обновляем поле ввода
-  searchQuery.value = result.display_name
+  const { searchLocation } = await useYandexMap()
+  const results = await searchLocation(searchQuery.value)
+  searchResults.value = results
 }
 
-// Обратное геокодирование
-const reverseGeocode = async (coordinates) => {
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.lat}&lon=${coordinates.lng}`)
-    
-    if (!response.ok) {
-      throw new Error('Ошибка обратного геокодирования')
-    }
-    
-    const data = await response.json()
-    
-    if (data.display_name) {
-      // Обновляем поле ввода
-      searchQuery.value = data.display_name
-      
-      // Обновляем попап маркера
-      map.value.eachLayer((layer) => {
-        if (layer instanceof L.Marker) {
-          layer.bindPopup(data.display_name).openPopup()
-        }
-      })
-    }
-  } catch (error) {
-    console.error('Ошибка обратного геокодирования:', error)
+const selectLocation = (result) => {
+  coordinates.value = {
+    lat: result.lat,
+    lng: result.lng
   }
+  
+  if (marker) {
+    marker.geometry.setCoordinates([result.lat, result.lng])
+  }
+  
+  if (map) {
+    map.setCenter([result.lat, result.lng])
+  }
+  
+  searchResults.value = []
+  searchQuery.value = result.name
 }
 
-// Сохранение местоположения
 const saveLocation = () => {
-  if (!marker.value) return
-  
-  emit('location-selected', { 
-    lat: marker.value.lat, 
-    lng: marker.value.lng,
-    address: searchQuery.value
-  })
+  emit('save', coordinates.value)
 }
 
-// Инициализация при монтировании компонента
-onMounted(() => {
-  // Проверяем, что Leaflet загружен
-  if (process.client && typeof L !== 'undefined') {
-    initMap()
-  } else {
-    // Если Leaflet не загружен, загружаем его динамически
-    const loadLeaflet = () => {
-      // Загружаем CSS
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css'
-      document.head.appendChild(link)
-      
-      // Загружаем JS
-      const script = document.createElement('script')
-      script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js'
-      script.onload = () => {
-        initMap()
-      }
-      document.head.appendChild(script)
-    }
-    
-    loadLeaflet()
+// Следим за изменением начального местоположения
+watch(() => props.initialLocation, (newLocation) => {
+  if (newLocation && map && marker) {
+    coordinates.value = newLocation
+    marker.geometry.setCoordinates([newLocation.lat, newLocation.lng])
+    map.setCenter([newLocation.lat, newLocation.lng])
   }
 })
-
-// Наблюдаем за изменением адреса
-watch(() => props.address, (newAddress) => {
-  if (newAddress && !searchQuery.value) {
-    searchQuery.value = newAddress
-    if (isMapInitialized.value) {
-      searchAddress()
-    }
-  }
-})
-</script>
-
-<style scoped>
-/* Стили для Leaflet, если нужны дополнительные */
-</style> 
+</script> 

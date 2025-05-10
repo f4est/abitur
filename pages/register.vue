@@ -153,6 +153,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'default'
+})
+
 const formData = reactive({
   name: '',
   email: '',

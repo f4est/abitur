@@ -63,11 +63,15 @@
                 class="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-white"
                 @click="profileMenuOpen = !profileMenuOpen"
               >
-                <img 
-                  :src="auth.user?.avatarUrl || '/images/placeholders-png/avatar.png'" 
-                  alt="Аватар пользователя" 
-                  class="w-8 h-8 rounded-full object-cover"
-                />
+                <div class="w-8 h-8 rounded-full overflow-hidden">
+                  <ImageLoader 
+                    :src="auth.user?.avatarUrl" 
+                    :alt="auth.user?.name || 'Пользователь'"
+                    placeholder-type="avatar"
+                    :show-initials="true"
+                    :name="auth.user?.name"
+                  />
+                </div>
                 <span>{{ auth.user?.name || 'Пользователь' }}</span>
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -277,6 +281,14 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch, reactive } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useSavedSchools } from '~/composables/useSavedSchools'
+import ImageLoader from '~/components/ImageLoader.vue'
+
+const router = useRouter()
+const route = useRoute()
+
 const auth = reactive({
   isAuthenticated: false,
   user: null,
@@ -287,68 +299,84 @@ const auth = reactive({
 const mobileMenuOpen = ref(false)
 const profileMenuOpen = ref(false)
 
+// Импортируем composable для управления сохраненными школами
+const { loadSavedSchools } = useSavedSchools()
+
 // При монтировании компонента проверяем, есть ли токен в localStorage
 onMounted(() => {
-  const token = localStorage.getItem('token')
-  const user = localStorage.getItem('user')
-  
-  updateAuthState(token, user)
-  
-  // Добавляем обработчик события хранилища для синхронизации между вкладками
-  window.addEventListener('storage', () => {
-    const updatedToken = localStorage.getItem('token')
-    const updatedUser = localStorage.getItem('user')
-    updateAuthState(updatedToken, updatedUser)
-  })
+  try {
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    
+    updateAuthState(token, userStr)
+    
+    // Загружаем сохраненные учебные заведения, если пользователь авторизован
+    if (token) {
+      loadSavedSchools()
+    }
+    
+    // Добавляем обработчик события хранилища для синхронизации между вкладками
+    window.addEventListener('storage', () => {
+      const updatedToken = localStorage.getItem('token')
+      const updatedUser = localStorage.getItem('user')
+      updateAuthState(updatedToken, updatedUser)
+      
+      // Обновляем сохраненные учебные заведения при изменении в localStorage
+      if (updatedToken) {
+        loadSavedSchools()
+      }
+    })
+    
+  } catch (error) {
+    console.error('Ошибка при инициализации авторизации:', error)
+  }
 })
 
 // Функция для обновления состояния авторизации
 function updateAuthState(token, userStr) {
-  if (token) {
-    auth.isAuthenticated = true
-    auth.token = token
-    
-    try {
+  try {
+    if (token) {
+      auth.isAuthenticated = true
+      auth.token = token
+      
       // Безопасный парсинг JSON с проверкой
       if (userStr && userStr !== 'undefined' && userStr !== 'null') {
-        auth.user = JSON.parse(userStr)
-        console.log('Пользователь загружен:', auth.user)
-        console.log('Роль пользователя:', auth.user.role)
-        
-        // Проверяем, если администратор (проверка по email)
-        if (auth.user.email.toLowerCase() === 'admin@gmail.com') {
-          console.log('Обнаружен пользователь admin@gmail.com - устанавливаем роль ADMIN')
-          auth.user.role = 'ADMIN'
-          // Сохраняем обновленные данные в localStorage
-          localStorage.setItem('user', JSON.stringify(auth.user))
-        }
-        
-        console.log('Является ли админом:', auth.user.role === 'ADMIN')
-        
-        // Принудительно устанавливаем роль для отладки
-        if (auth.user.role === 'ADMIN') {
-          console.log('Это администратор! Должна показываться ссылка на админ-панель.')
+        try {
+          auth.user = JSON.parse(userStr)
+          console.log('Пользователь загружен:', auth.user)
+          console.log('Роль пользователя:', auth.user.role)
+          
+          // Проверяем роль пользователя, но не проверяем конкретный email
+          console.log('Является ли админом:', auth.user.role === 'ADMIN')
+          
+          // Принудительно устанавливаем роль для отладки
+          if (auth.user.role === 'ADMIN') {
+            console.log('Это администратор! Должна показываться ссылка на админ-панель.')
+          }
+        } catch (parseError) {
+          console.error('Ошибка парсинга данных пользователя:', parseError)
+          resetAuth()
         }
       } else {
         // Если user некорректный, сбрасываем данные авторизации
-        auth.isAuthenticated = false
-        auth.token = null
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        resetAuth()
       }
-    } catch (error) {
-      console.error('Ошибка при парсинге данных пользователя:', error)
-      // В случае ошибки парсинга, сбрасываем данные авторизации
-      auth.isAuthenticated = false
-      auth.token = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+    } else {
+      resetAuth()
     }
-  } else {
-    auth.isAuthenticated = false
-    auth.user = null
-    auth.token = null
+  } catch (error) {
+    console.error('Общая ошибка при обновлении состояния авторизации:', error)
+    resetAuth()
   }
+}
+
+// Функция сброса авторизации
+function resetAuth() {
+  auth.isAuthenticated = false
+  auth.user = null
+  auth.token = null
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
 }
 
 // Функция для выхода
@@ -359,7 +387,9 @@ const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   profileMenuOpen.value = false
-  navigateTo('/')
+  
+  // Используем router.push вместо navigateTo
+  router.push('/')
 }
 
 // Закрытие меню при клике вне его
@@ -373,7 +403,6 @@ onMounted(() => {
 })
 
 // Закрытие мобильного меню при изменении маршрута
-const route = useRoute()
 watch(() => route.path, () => {
   mobileMenuOpen.value = false
   profileMenuOpen.value = false

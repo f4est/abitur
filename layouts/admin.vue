@@ -53,71 +53,47 @@ const isLoading = ref(true)
 const router = useRouter()
 
 // Проверка аутентификации при монтировании компонента
-onMounted(async () => {
-  await checkAuth()
+onMounted(() => {
+  // Проверяем наличие токена и пользователя напрямую из localStorage
+  if (process.client) {
+    const token = localStorage.getItem('token')
+    const userJson = localStorage.getItem('user')
+    
+    if (!token || !userJson) {
+      console.error('Отсутствует токен или данные пользователя')
+      router.push('/login')
+      return
+    }
+    
+    try {
+      // Пробуем получить данные пользователя из localStorage
+      const userData = JSON.parse(userJson)
+      
+      if (!userData || userData.role !== 'ADMIN') {
+        console.error('У пользователя нет прав администратора')
+        router.push('/')
+        return
+      }
+      
+      // Успешно установили пользователя из localStorage
+      user.value = userData
+      console.log('Успешно загружены данные администратора из localStorage')
+    } catch (error) {
+      console.error('Ошибка при чтении данных пользователя:', error)
+      router.push('/login')
+    } finally {
+      isLoading.value = false
+    }
+  }
 })
 
-// Проверка статуса аутентификации и прав доступа
-const checkAuth = async () => {
-  try {
-    isLoading.value = true
-    
-    // Проверяем, что мы на клиенте
-    if (!process.client) {
-      return
-    }
-    
-    // Получаем токен из localStorage
-  const token = localStorage.getItem('token')
-    
-    if (!token) {
-      // Если токена нет, перенаправляем на страницу входа
-      router.push('/login')
-      return
-    }
-    
-    // Запрос данных текущего пользователя с сервера
-    const { data } = await useFetch('/api/users/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    if (data.value && data.value.body) {
-      user.value = data.value.body
-      
-      // Проверяем, имеет ли пользователь права администратора
-      if (user.value.role !== 'ADMIN') {
-        // Если нет прав администратора, перенаправляем на главную
-        localStorage.removeItem('token')
-        router.push('/')
-      }
-    } else {
-      // Если запрос не вернул данные пользователя, перенаправляем на страницу входа
-      localStorage.removeItem('token')
-      router.push('/login')
-    }
-  } catch (error) {
-    console.error('Ошибка проверки аутентификации:', error)
-    // В случае ошибки перенаправляем на страницу входа
-    if (process.client) {
-      localStorage.removeItem('token')
-    }
-    router.push('/login')
-  } finally {
-    isLoading.value = false
-  }
-}
-
 // Функция для выхода
-const logout = async () => {
-  // Удаляем токен из localStorage
+const logout = () => {
   if (process.client) {
-  localStorage.removeItem('token')
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    user.value = null
+    router.push('/')
   }
-  user.value = null
-  
-  // Перенаправляем на главную страницу
-  router.push('/')
 }
 </script> 

@@ -26,9 +26,10 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     // Секретный ключ для JWT
-    JWT_SECRET: 'your_super_secret_jwt_key_for_abiturienty_project',
+    JWT_SECRET: process.env.JWT_SECRET || 'your_super_secret_jwt_key_for_abiturienty_project',
     public: {
-      apiBase: '/api'
+      apiBase: '/api',
+      yandexMapsApiKey: process.env.YANDEX_MAPS_API_KEY || ''
     }
   }
 }) 

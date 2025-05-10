@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-snow-white min-h-screen p-2 sm:p-4 md:p-6">
+  <div class="bg-snow-white p-2 sm:p-4 md:p-6">
     <h1 class="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-800">Панель управления администратора</h1>
     
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
@@ -78,7 +78,7 @@
       <!-- Содержимое таба пользователей -->
       <div v-if="activeTab === 'users'" class="p-3 sm:p-6">
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800">Управление пользователями</h2>
-        
+          
         <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
           <input 
             v-model="searchQuery"
@@ -153,7 +153,7 @@
       <!-- Содержимое таба учебных заведений -->
       <div v-if="activeTab === 'schools'" class="p-3 sm:p-6">
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800">Управление учебными заведениями</h2>
-        
+          
         <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
           <input 
             v-model="searchQuery"
@@ -198,7 +198,7 @@
       <!-- Содержимое таба вопросов теста -->
       <div v-if="activeTab === 'test'" class="p-3 sm:p-6">
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800">Управление вопросами теста</h2>
-        
+          
         <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
           <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <input 
@@ -260,45 +260,30 @@
       </div>
     </div>
     
-    <!-- Dashboard (показывается, когда не выбран ни один таб) -->
-    <div v-if="activeTab === 'dashboard'">
-      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+    <!-- Данные панели управления -->
+    <div v-if="activeTab === 'dashboard'" class="space-y-6">
+      <!-- Последние действия -->
+      <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
         <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800">Последние действия</h2>
         
-        <div v-if="isLoading" class="text-center py-8">
-          <p class="text-gray-500">Загрузка данных...</p>
-        </div>
-        
-        <div v-else-if="!actions.length" class="text-center py-8">
+        <div v-if="!actions.length" class="text-center py-8">
           <p class="text-gray-500">Нет данных о последних действиях</p>
         </div>
         
         <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+          <table class="min-w-full">
             <thead>
               <tr>
-                <th class="px-3 py-3 sm:px-6 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Дата и время
-                </th>
-                <th class="px-3 py-3 sm:px-6 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Пользователь
-                </th>
-                <th class="px-3 py-3 sm:px-6 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Действие
-                </th>
+                <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
+                <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действие</th>
+                <th class="px-3 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(action, index) in actions" :key="index">
-                <td class="px-3 py-4 sm:px-6 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                  {{ new Date(action.date).toLocaleString() }}
-                </td>
-                <td class="px-3 py-4 sm:px-6 whitespace-nowrap">
-                  <div class="text-xs sm:text-sm font-medium text-gray-900">{{ action.user }}</div>
-                </td>
-                <td class="px-3 py-4 sm:px-6 text-xs sm:text-sm text-gray-500">
-                  {{ action.description }}
-                </td>
+              <tr v-for="action in actions" :key="action.id">
+                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{{ action.user }}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{{ action.description }}</td>
+                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">{{ action.date }}</td>
               </tr>
             </tbody>
           </table>
@@ -348,6 +333,41 @@ definePageMeta({
   middleware: 'admin'
 })
 
+// Убедимся, что страница получила полный доступ перед загрузкой данных
+const router = useRouter()
+const isAuthorized = ref(false)
+
+// Проверяем авторизацию перед загрузкой данных
+onMounted(() => {
+  if (process.client) {
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    
+    if (!token || !userStr) {
+      console.log("Нет данных авторизации на странице админ-панели")
+      router.push('/login')
+      return
+    }
+    
+    try {
+      const user = JSON.parse(userStr)
+      if (user && user.role === 'ADMIN') {
+        console.log("Авторизация на админ-панели подтверждена")
+        isAuthorized.value = true
+        // Загружаем данные только после подтверждения авторизации
+        loadStats()
+        loadPopularSchools()
+      } else {
+        console.log("Пользователь не администратор")
+        router.push('/')
+      }
+    } catch (e) {
+      console.error("Ошибка проверки авторизации:", e)
+      router.push('/login')
+    }
+  }
+})
+
 const isLoading = ref(false)
 const activeTab = ref('dashboard')
 
@@ -367,16 +387,11 @@ const popularSchools = ref([])
 // Системные переменные
 const searchQuery = ref('')
 
-// Токен для API-запросов
-const token = process.client ? localStorage.getItem('token') : null
-
 // Загрузка данных
 const isLoadingStats = ref(true)
 const isLoadingUsers = ref(false)
 const isLoadingSchools = ref(false)
 const isLoadingQuestions = ref(false)
-const isLoadingPopular = ref(false)
-const isLoadingActions = ref(false)
 
 // Пользователи
 const users = ref([])
@@ -418,7 +433,7 @@ const filteredQuestions = computed(() => {
   
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(q => q.text && q.text.toLowerCase().includes(query))
+    filtered = filtered.filter(q => q.question && q.question.toLowerCase().includes(query))
   }
   
   return filtered
@@ -430,34 +445,49 @@ const getInitials = (name) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
 }
 
+// Переходы в табы
+const openUsersTab = () => {
+  activeTab.value = 'users'
+  if (users.value.length === 0) {
+    loadUsers()
+  }
+}
+
+const openSchoolsTab = () => {
+  activeTab.value = 'schools'
+  if (schools.value.length === 0) {
+    loadSchools()
+  }
+}
+
+const openTestTab = () => {
+  activeTab.value = 'test'
+  if (questions.value.length === 0) {
+    loadTestQuestions()
+  }
+}
+
 // Загрузка статистики
 const loadStats = async () => {
   isLoadingStats.value = true
   try {
-    const [usersResponse, schoolsResponse, questionsResponse] = await Promise.all([
-      useFetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${token}` },
-        key: 'admin-users-count'
-      }),
-      useFetch('/api/schools', {
-        headers: { 'Authorization': `Bearer ${token}` },
-        key: 'admin-schools-count'
-      }),
-      useFetch('/api/test-api/questions', {
-        headers: { 'Authorization': `Bearer ${token}` },
-        key: 'admin-questions-count'
-      })
-    ])
+    // Заменяем useFetch на прямой вызов fetch и обработку через await response.json()
+    const token = localStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}` };
     
-    if (usersResponse.error.value || schoolsResponse.error.value || questionsResponse.error.value) {
-      throw new Error('Ошибка загрузки статистики')
-    }
+    const [usersResponse, schoolsResponse, questionsResponse] = await Promise.all([
+      fetch('/api/users', { headers }).then(res => res.json()),
+      fetch('/api/schools', { headers }).then(res => res.json()),
+      fetch('/api/test-api/questions', { headers }).then(res => res.json())
+    ]);
     
     stats.value = {
-      usersCount: usersResponse.data.value?.body?.length || 0,
-      schoolsCount: schoolsResponse.data.value?.body?.length || 0,
-      questionsCount: questionsResponse.data.value?.body?.length || 0
+      usersCount: Array.isArray(usersResponse.body) ? usersResponse.body.length : 0,
+      schoolsCount: Array.isArray(schoolsResponse.body) ? schoolsResponse.body.length : 0,
+      questionsCount: Array.isArray(questionsResponse.body) ? questionsResponse.body.length : 0
     }
+    
+    console.log("Статистика загружена:", stats.value);
   } catch (error) {
     console.error('Ошибка загрузки статистики:', error)
     // Устанавливаем значения по умолчанию в случае ошибки
@@ -471,18 +501,20 @@ const loadStats = async () => {
 const loadUsers = async () => {
   isLoadingUsers.value = true
   try {
-    const { data, error } = await useFetch('/api/users', {
-      headers: { 'Authorization': `Bearer ${token}` },
-      key: `admin-users-${searchQuery.value}`
-    })
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/users', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
-    if (error.value) {
-      throw new Error('Ошибка загрузки пользователей')
+    if (!response.ok) {
+      throw new Error(`Ошибка загрузки пользователей: ${response.status}`);
     }
     
-    // Убедимся, что data.value.body - это массив
-    users.value = Array.isArray(data.value.body) ? data.value.body : []
-    console.log('Загружено пользователей:', users.value.length)
+    const data = await response.json();
+    
+    // Убедимся, что data.body - это массив
+    users.value = Array.isArray(data.body) ? data.body : [];
+    console.log('Загружено пользователей:', users.value.length);
   } catch (error) {
     console.error('Ошибка загрузки пользователей:', error)
     users.value = []
@@ -495,18 +527,19 @@ const loadUsers = async () => {
 const loadSchools = async () => {
   isLoadingSchools.value = true
   try {
-    const { data, error } = await useFetch('/api/schools', {
-      headers: { 'Authorization': `Bearer ${token}` },
-      key: `admin-schools-${searchQuery.value}`
-    })
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/schools', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
-    if (error.value) {
-      throw new Error('Ошибка загрузки учебных заведений')
+    if (!response.ok) {
+      throw new Error(`Ошибка загрузки учебных заведений: ${response.status}`);
     }
     
-    // Убедимся, что data.value.body - это массив
-    schools.value = Array.isArray(data.value.body) ? data.value.body : []
-    console.log('Загружено учебных заведений:', schools.value.length)
+    const data = await response.json();
+    
+    // Убедимся, что data.body - это массив
+    schools.value = Array.isArray(data.body) ? data.body : [];
   } catch (error) {
     console.error('Ошибка загрузки учебных заведений:', error)
     schools.value = []
@@ -515,24 +548,25 @@ const loadSchools = async () => {
   }
 }
 
-// Загрузка вопросов
-const loadQuestions = async () => {
+// Загрузка вопросов теста
+const loadTestQuestions = async () => {
   isLoadingQuestions.value = true
   try {
-    const { data, error } = await useFetch('/api/test-api/questions', {
-      headers: { 'Authorization': `Bearer ${token}` },
-      key: `admin-questions-${questionCategory.value}-${searchQuery.value}`
-    })
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/test-api/questions', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     
-    if (error.value) {
-      throw new Error('Ошибка загрузки вопросов')
+    if (!response.ok) {
+      throw new Error(`Ошибка загрузки вопросов теста: ${response.status}`);
     }
     
-    // Убедимся, что data.value.body - это массив
-    questions.value = Array.isArray(data.value.body) ? data.value.body : []
-    console.log('Загружено вопросов теста:', questions.value.length)
+    const data = await response.json();
+    
+    // Убедимся, что data.body - это массив
+    questions.value = Array.isArray(data.body) ? data.body : [];
   } catch (error) {
-    console.error('Ошибка загрузки вопросов:', error)
+    console.error('Ошибка загрузки вопросов теста:', error)
     questions.value = []
   } finally {
     isLoadingQuestions.value = false
@@ -541,99 +575,16 @@ const loadQuestions = async () => {
 
 // Загрузка популярных учебных заведений
 const loadPopularSchools = async () => {
-  isLoadingPopular.value = true
   try {
-    // Здесь будет запрос к API для получения популярных учебных заведений
-    // Пока возвращаем пустой список
-    popularSchools.value = []
+    // Имитация данных для примера
+    popularSchools.value = [
+      { id: 1, name: 'Университет информационных технологий', address: 'г. Алматы, ул. Толе би, 109', savedCount: 24 },
+      { id: 2, name: 'Казахский национальный университет', address: 'г. Алматы, пр. аль-Фараби, 71', savedCount: 18 },
+      { id: 3, name: 'Медицинский университет Астана', address: 'г. Астана, ул. Бейбитшилик, 49А', savedCount: 12 }
+    ];
   } catch (error) {
     console.error('Ошибка загрузки популярных учебных заведений:', error)
     popularSchools.value = []
-  } finally {
-    isLoadingPopular.value = false
   }
 }
-
-// Загрузка последних действий
-const loadActions = async () => {
-  isLoadingActions.value = true
-  try {
-    // Здесь будет запрос к API для получения последних действий
-    // Пока возвращаем пустой список
-    actions.value = []
-  } catch (error) {
-    console.error('Ошибка загрузки последних действий:', error)
-    actions.value = []
-  } finally {
-    isLoadingActions.value = false
-  }
-}
-
-// Загрузка данных при переключении вкладок
-const handleTabChange = (tab) => {
-  activeTab.value = tab
-  
-  if (tab === 'users' && users.value.length === 0) {
-    loadUsers()
-  } else if (tab === 'schools' && schools.value.length === 0) {
-    loadSchools()
-  } else if (tab === 'questions' && questions.value.length === 0) {
-    loadQuestions()
-  }
-}
-
-// Загрузка начальных данных
-onMounted(() => {
-  loadStats()
-  loadPopularSchools()
-  loadActions()
-})
-
-// Отслеживание изменений поисковой строки
-watch(searchQuery, (newVal, oldVal) => {
-  if (activeTab.value === 'users') {
-    loadUsers()
-  } else if (activeTab.value === 'schools') {
-    loadSchools()
-  } else if (activeTab.value === 'questions') {
-    loadQuestions()
-  }
-})
-
-// Отслеживание изменений категории вопросов
-watch(questionCategory, () => {
-  if (activeTab.value === 'questions') {
-    loadQuestions()
-  }
-})
-
-// Функции открытия табов
-const openUsersTab = async () => { 
-  activeTab.value = 'users'
-  searchQuery.value = ''
-  if (users.value.length === 0) {
-    loadUsers()
-  }
-}
-
-const openSchoolsTab = async () => { 
-  activeTab.value = 'schools'
-  searchQuery.value = ''
-  if (schools.value.length === 0) {
-    loadSchools()
-  }
-}
-
-const openTestTab = async () => { 
-  activeTab.value = 'test'
-  searchQuery.value = ''
-  questionCategory.value = ''
-  if (questions.value.length === 0) {
-    loadQuestions()
-  }
-}
-
-useHead({
-  title: 'Панель управления - Админ-панель'
-})
 </script> 

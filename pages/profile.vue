@@ -30,13 +30,14 @@
               <div class="flex flex-col items-center">
                 <div class="relative group">
                   <div class="w-32 h-32 rounded-full bg-skyway text-white flex items-center justify-center overflow-hidden border-4 border-white shadow-lg group-hover:border-yolk-yellow transition-colors">
-                    <img 
-                      v-if="user.avatarUrl" 
-                      :src="user.avatarUrl" 
+                    <ImageLoader
+                      :src="user.avatarUrl"
                       :alt="user.name"
-                      class="w-full h-full object-cover"
+                      placeholder-type="avatar"
+                      :show-initials="true"
+                      :name="user.name"
+                      class="w-full h-full"
                     />
-                    <span v-else class="text-4xl font-bold">{{ getInitials(user.name) }}</span>
                   </div>
                   <div class="absolute bottom-0 right-0 bg-ashleigh hover:bg-yolk-yellow text-white rounded-full w-10 h-10 flex items-center justify-center cursor-pointer shadow-md transition-colors transform hover:scale-105" 
                        @click="openAvatarEditor"
@@ -143,28 +144,42 @@
                 :key="saved.schoolId" 
                 class="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white group"
               >
-                <div>
-                  <h3 class="text-lg font-semibold mb-1 group-hover:text-ashleigh transition-colors">{{ saved.school.name }}</h3>
-                  <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ saved.school.address }}</p>
-                  
-                  <div class="flex space-x-2 justify-end mt-2">
-                    <NuxtLink :to="`/catalog/${saved.schoolId}`" class="btn btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Подробнее
-                    </NuxtLink>
-                    <button 
-                      @click="removeSavedSchool(saved.schoolId)" 
-                      class="btn text-sm px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white inline-flex items-center gap-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Удалить
-                    </button>
+                <div class="flex gap-3">
+                  <div class="h-16 w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <ImageLoader
+                      :src="saved.school?.logoUrl"
+                      :alt="saved.school?.name || 'Учебное заведение'"
+                      placeholder-type="school-logo"
+                      :name="saved.school?.name"
+                    />
                   </div>
+                  <div class="flex-grow">
+                    <h3 class="text-lg font-semibold mb-1 group-hover:text-ashleigh transition-colors">
+                      {{ saved.school ? saved.school.name : 'Загрузка...' }}
+                    </h3>
+                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">
+                      {{ saved.school ? saved.school.address : 'Адрес загружается...' }}
+                    </p>
+                  </div>
+                </div>
+                
+                <div class="flex space-x-2 justify-end mt-2">
+                  <NuxtLink :to="`/catalog/${saved.schoolId}`" class="btn btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Подробнее
+                  </NuxtLink>
+                  <button 
+                    @click="removeSavedSchool(saved.schoolId)" 
+                    class="btn text-sm px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white inline-flex items-center gap-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Удалить
+                  </button>
                 </div>
               </div>
             </div>
@@ -392,10 +407,13 @@
 
 <script setup>
 definePageMeta({
+  layout: 'default',
   middleware: 'auth'
 })
 
 import ImageUploader from '~/components/ImageUploader.vue'
+import { useSavedSchools } from '~/composables/useSavedSchools'
+import ImageLoader from '~/components/ImageLoader.vue'
 
 const user = ref(null)
 const isLoading = ref(true)
@@ -411,6 +429,9 @@ const profileForm = reactive({
 const avatarForm = reactive({
   avatarUrl: ''
 })
+
+// Используем composable для управления сохраненными школами
+const { toggleSaveSchool: toggleSaveSchoolAction } = useSavedSchools()
 
 // Управление модальными окнами
 const openAvatarEditor = () => {
@@ -605,57 +626,145 @@ const getMaxCategoryScore = (resultsStr) => {
 const loadUserData = async () => {
   isLoading.value = true
   
-  const token = localStorage.getItem('token')
-  if (!token) {
-    isLoading.value = false
-    return
-  }
-  
   try {
+    // Сначала проверяем, есть ли токен
+    const token = localStorage.getItem('token')
+    if (!token) {
+      console.log('Нет токена для загрузки данных пользователя')
+      isLoading.value = false
+      return
+    }
+    
+    // Проверяем, есть ли кэшированные данные пользователя в localStorage
+    const userStr = localStorage.getItem('user')
+    if (userStr && userStr !== 'undefined' && userStr !== 'null') {
+      try {
+        const userData = JSON.parse(userStr)
+        if (userData && userData.id) {
+          // Если есть валидные данные пользователя в localStorage, используем их
+          console.log('Используем кэшированные данные пользователя:', userData.name)
+          user.value = userData
+          
+          // Устанавливаем значения в форму
+          profileForm.name = user.value.name || ''
+          avatarForm.avatarUrl = user.value.avatarUrl || ''
+          
+          // Дополнительно запрашиваем свежие данные без ожидания (без await)
+          fetchUserDataFromAPI(token)
+          isLoading.value = false
+          return
+        }
+      } catch (e) {
+        console.error('Ошибка при парсинге данных пользователя из localStorage:', e)
+      }
+    }
+    
+    // Если нет кэшированных данных или они некорректны, делаем запрос к API
+    await fetchUserDataFromAPI(token)
+    
+  } catch (error) {
+    console.error('Ошибка загрузки данных пользователя:', error)
+    user.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Вспомогательная функция для загрузки данных с API
+const fetchUserDataFromAPI = async (token) => {
+  try {
+    console.log('Запрашиваем данные пользователя с API')
     const response = await fetch('/api/users/me', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     })
     
+    if (!response.ok) {
+      throw new Error(`Ошибка API: ${response.status} ${response.statusText}`)
+    }
+    
     const data = await response.json()
     
-    if (response.ok) {
-      user.value = data.body
-      
-      // Устанавливаем значения в форму
-      profileForm.name = user.value.name || ''
-      avatarForm.avatarUrl = user.value.avatarUrl || ''
-    } else {
-      console.error('Ошибка загрузки данных пользователя:', data.message)
+    if (!data || !data.id) {
+      throw new Error('Данные пользователя отсутствуют или некорректны')
     }
+    
+    console.log('Данные пользователя успешно получены:', data.name)
+    console.log('Сохраненные учебные заведения:', data.savedSchools ? data.savedSchools.length : 0)
+    user.value = data
+    
+    // Если есть сохраненные школы, но нет данных о них, загрузим дополнительную информацию
+    if (data.savedSchools && Array.isArray(data.savedSchools)) {
+      await loadSchoolDetails(data.savedSchools)
+    }
+    
+    // Устанавливаем значения в форму
+    profileForm.name = user.value.name || ''
+    avatarForm.avatarUrl = user.value.avatarUrl || ''
+    
+    // Обновляем данные в localStorage
+    localStorage.setItem('user', JSON.stringify(data))
+    
   } catch (error) {
-    console.error('Ошибка загрузки данных пользователя:', error)
-  } finally {
-    isLoading.value = false
+    console.error('Ошибка при получении данных с API:', error)
+    
+    // Проверяем, есть ли у нас данные пользователя из localStorage
+    if (!user.value) {
+      // Если нет, очищаем токен и пользователя, так как они недействительны
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      throw error // Пробрасываем ошибку дальше для обработки
+    }
+  }
+}
+
+// Функция для загрузки подробных данных о сохраненных учебных заведениях
+const loadSchoolDetails = async (savedSchools) => {
+  if (!Array.isArray(savedSchools) || savedSchools.length === 0) return
+  
+  const schoolDetails = await Promise.all(
+    savedSchools.map(async (saved) => {
+      if (saved.school && saved.school.name) {
+        // Уже есть подробные данные
+        return saved
+      }
+      
+      try {
+        const response = await fetch(`/api/schools/${saved.schoolId}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data && data.body) {
+            // Обновляем информацию о школе
+            saved.school = data.body
+          }
+        }
+      } catch (error) {
+        console.error(`Ошибка загрузки информации о школе ${saved.schoolId}:`, error)
+      }
+      
+      return saved
+    })
+  )
+  
+  // Обновляем данные в user.value
+  if (user.value) {
+    user.value.savedSchools = schoolDetails
   }
 }
 
 // Удаление сохраненного учебного заведения
 const removeSavedSchool = async (schoolId) => {
-  const token = localStorage.getItem('token')
-  if (!token) return
-  
   try {
-    const response = await fetch(`/api/schools/${schoolId}/save`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    // Используем функцию из composable для удаления
+    await toggleSaveSchoolAction(schoolId)
     
-    if (response.ok) {
-      // Обновляем список сохраненных учебных заведений
+    // Обновляем отображение в интерфейсе
+    if (user.value && user.value.savedSchools) {
       user.value.savedSchools = user.value.savedSchools.filter(
         saved => saved.schoolId !== schoolId
       )
-    } else {
-      console.error('Ошибка удаления сохраненного учебного заведения')
+      console.log(`Учебное заведение ${schoolId} удалено из избранного`)
     }
   } catch (error) {
     console.error('Ошибка удаления сохраненного учебного заведения:', error)

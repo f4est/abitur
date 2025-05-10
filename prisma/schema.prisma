@@ -28,47 +28,61 @@ model User {
 }
 
 model School {
-  id              Int      @id @default(autoincrement())
-  name            String
-  description     String
-  address         String
-  coordinates     String?
-  logoUrl         String?
-  websiteUrl      String?
-  contacts        String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  photos          SchoolPhoto[]
-  programs        EducationalProgram[]
-  savedByUsers    SavedSchool[]
-  reviews         Review[]
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  address       String
+  coordinates   String?
+  logoUrl       String?
+  websiteUrl    String?
+  contacts      String?
+  category      String?   // Тип учебного заведения (университет, колледж и т.д.)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Связи
+  photos        SchoolPhoto[]
+  programs      EducationalProgram[]
+  savedByUsers  SavedSchool[]
+  reviews       Review[]
+
+  @@map("School")
 }
 
 model SchoolPhoto {
   id        Int      @id @default(autoincrement())
   url       String
   schoolId  Int
+  createdAt DateTime @default(now())
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@map("SchoolPhoto")
 }
 
 model EducationalProgram {
-  id            Int     @id @default(autoincrement())
-  name          String
-  code          String?
-  description   String
-  duration      String
-  price         Float?
-  schoolId      Int
-  school        School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String?  // Код направления
+  description String?
+  duration    String?  // Срок обучения
+  price       Float?   // Стоимость обучения
+  schoolId    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   examRequirements ExamRequirement[]
+
+  @@map("EducationalProgram")
 }
 
 model ExamRequirement {
-  id          Int     @id @default(autoincrement())
-  examName    String
-  minScore    Int?
+  id          Int      @id @default(autoincrement())
+  name        String   // Название экзамена
+  minScore    Int      // Минимальный балл
   programId   Int
   program     EducationalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("ExamRequirement")
 }
 
 model TestQuestion {
@@ -99,16 +113,19 @@ model SavedSchool {
 
 model Review {
   id          Int      @id @default(autoincrement())
-  schoolId    Int
-  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  userName    String
-  rating      Int
   text        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  rating      Float
+  authorName  String
+  source      String?  // Источник отзыва (2GIS и т.д.)
+  isExternal  Boolean  @default(false)
   isApproved  Boolean  @default(false)
+  schoolId    Int
+  userId      Int
+  createdAt   DateTime @default(now())
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("Review")
 }
 
 enum Role {

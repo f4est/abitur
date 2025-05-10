@@ -16,21 +16,30 @@
       <div class="flex flex-col md:flex-row gap-4 sm:gap-6 mb-4 sm:mb-8">
         <div class="md:w-1/4">
           <div class="bg-white rounded-lg shadow-md p-4 flex items-center justify-center h-48 md:h-64">
-            <img
-              v-if="school.logoUrl"
+            <ImageLoader
               :src="school.logoUrl"
               :alt="school.name"
-              class="max-w-full max-h-full object-contain"
+              placeholder-type="school-logo"
+              :name="school.name"
+              class="max-w-full max-h-full"
             />
-            <div v-else class="flex items-center justify-center h-full w-full bg-skyway text-white">
-              <img src="/images/placeholders-png/school-logo.png" alt="Логотип" class="max-w-full max-h-full" />
-            </div>
           </div>
         </div>
         
         <div class="md:w-3/4">
           <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
-            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-4">{{ school.name }}</h1>
+            <div class="flex justify-between items-start">
+              <h1 class="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-4">{{ school.name }}</h1>
+              
+              <!-- Блок с рейтингом -->
+              <div v-if="school.averageRating" class="flex items-center bg-ashleigh bg-opacity-10 text-ashleigh px-3 py-2 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span class="font-medium text-lg">{{ school.averageRating }}</span>
+                <span class="text-sm text-gray-600 ml-1">({{ school.reviewCount }})</span>
+              </div>
+            </div>
             
             <div class="flex items-start text-gray-600 mb-3 sm:mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -85,12 +94,13 @@
             v-for="photo in school.photos"
             :key="photo.id"
             class="h-40 sm:h-48 bg-gray-200 rounded-lg overflow-hidden group relative cursor-pointer"
-            @click="openGallery(photo.url || '/images/placeholders-png/school-photo.png', photo.description)"
+            @click="openGallery(photo.url, photo.description)"
           >
-            <img
-              :src="photo.url || '/images/placeholders-png/school-photo.png'"
+            <ImageLoader
+              :src="photo.url"
               :alt="photo.description || school.name"
-              class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              placeholder-type="school-photo"
+              class="w-full h-full transition-transform duration-300 group-hover:scale-105"
             />
             <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-end">
               <div v-if="photo.description" class="bg-black/70 text-white w-full py-2 px-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 text-sm">
@@ -118,9 +128,10 @@
           
           <!-- Основное изображение -->
           <div class="flex-grow flex items-center justify-center p-4">
-            <img 
+            <ImageLoader 
               :src="currentImage" 
-              :alt="currentDescription" 
+              :alt="currentDescription"
+              placeholder-type="school-photo"
               class="max-h-full max-w-full object-contain"
             />
           </div>
@@ -165,7 +176,7 @@
       </div>
       
       <!-- Карта -->
-      <SchoolMap :address="school.address" :schoolName="school.name" />
+      <SchoolMap :address="school.address" :schoolName="school.name" :coordinates="school.coordinates" />
       
       <!-- Отзывы из 2GIS -->
       <ExternalReviews :schoolId="school.id" :schoolName="school.name" :schoolAddress="school.address" />
@@ -228,25 +239,6 @@
         </div>
       </div>
       
-      <!-- Карта -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-semibold mb-4">Расположение</h2>
-        
-        <div id="map" class="h-80 rounded-lg">
-          <!-- Здесь будет карта Яндекс -->
-        </div>
-        
-        <!-- Редактор координат для администраторов -->
-        <LocationEditor 
-          v-if="user?.role === 'ADMIN'"
-          :schoolId="schoolId"
-          :coordinates="school.coordinates"
-          :adminId="user.id"
-          :mapInstance="mapInstance"
-          @coordinates-updated="updateCoordinates"
-        />
-      </div>
-      
       <!-- Отзывы -->
       <Reviews 
         :schoolId="schoolId" 
@@ -264,18 +256,36 @@ import { useRoute, navigateTo, useHead } from '#imports'
 import LocationEditor from '~/components/LocationEditor.vue'
 import SchoolMap from '~/components/SchoolMap.vue'
 import ExternalReviews from '~/components/ExternalReviews.vue'
+import { useSavedSchools } from '~/composables/useSavedSchools'
+import ImageLoader from '~/components/ImageLoader.vue'
+
+definePageMeta({
+  layout: 'default'
+})
 
 const route = useRoute()
 const schoolId = parseInt(route.params.id)
 
 const school = ref(null)
 const isLoading = ref(true)
-const isSaved = ref(false)
 const token = ref(null)
 const user = ref(null)
 const mapInstance = ref(null)
 
-// Состояние фотогалереи
+// Используем composable для управления сохраненными школами
+const { isSchoolSaved, loadSavedSchools, toggleSaveSchool: toggleSaveSchoolAction } = useSavedSchools()
+
+// Проверка, сохранено ли учебное заведение
+const isSaved = computed(() => {
+  return isSchoolSaved(schoolId)
+})
+
+// Переадресация вызова в composable
+const toggleSaveSchool = () => {
+  toggleSaveSchoolAction(schoolId)
+}
+
+// Данные для галереи
 const galleryOpen = ref(false)
 const currentImageIndex = ref(0)
 const currentImage = ref('')
@@ -307,7 +317,7 @@ const openGallery = (imageUrl, description) => {
   
   const index = school.value.photos.findIndex(p => p.url === imageUrl)
   currentImageIndex.value = index >= 0 ? index : 0
-  currentImage.value = imageUrl
+  currentImage.value = imageUrl || ''
   currentDescription.value = description || ''
   galleryOpen.value = true
   
@@ -328,7 +338,7 @@ const prevImage = () => {
   if (currentImageIndex.value > 0) {
     currentImageIndex.value--
     const photo = school.value.photos[currentImageIndex.value]
-    currentImage.value = photo.url || '/images/placeholders-png/school-photo.png'
+    currentImage.value = photo.url || ''
     currentDescription.value = photo.description || ''
   }
 }
@@ -338,7 +348,7 @@ const nextImage = () => {
   if (currentImageIndex.value < school.value.photos.length - 1) {
     currentImageIndex.value++
     const photo = school.value.photos[currentImageIndex.value]
-    currentImage.value = photo.url || '/images/placeholders-png/school-photo.png'
+    currentImage.value = photo.url || ''
     currentDescription.value = photo.description || ''
   }
 }
@@ -366,54 +376,27 @@ const loadUserData = async () => {
   if (!token.value) return
   
   try {
-    const response = await fetch('/api/users/me')
-    const data = await response.json()
+    // Загружаем сохраненные школы
+    await loadSavedSchools()
     
-    if (response.ok) {
-      user.value = data.body
-    }
-  } catch (error) {
-    console.error('Ошибка загрузки данных пользователя:', error)
-  }
-}
-
-// Проверка, сохранено ли учебное заведение
-const checkIfSaved = async () => {
-  if (!user.value) return
-  
-  try {
-    isSaved.value = user.value.savedSchools.some(saved => saved.schoolId === schoolId)
-  } catch (error) {
-    console.error('Ошибка проверки сохраненных учебных заведений:', error)
-  }
-}
-
-// Сохранение/удаление учебного заведения
-const toggleSaveSchool = async () => {
-  if (!token.value) {
-    // Если пользователь не авторизован, перенаправляем на страницу входа
-    navigateTo('/login')
-    return
-  }
-  
-  try {
-    const url = `/api/schools/${schoolId}/save`
-    const method = isSaved.value ? 'DELETE' : 'POST'
-    
-    const response = await fetch(url, {
-      method,
+    // Загружаем данные пользователя
+    const response = await fetch('/api/users/me', {
       headers: {
         'Authorization': `Bearer ${token.value}`
       }
     })
     
     if (response.ok) {
-      isSaved.value = !isSaved.value
+      const userData = await response.json()
+      if (userData && userData.id) {
+        user.value = userData
+        console.log('Данные пользователя загружены:', user.value.name)
+      }
     } else {
-      console.error('Ошибка при сохранении/удалении учебного заведения')
+      console.error('Ошибка при загрузке данных пользователя:', response.status)
     }
   } catch (error) {
-    console.error('Ошибка при сохранении/удалении учебного заведения:', error)
+    console.error('Ошибка загрузки данных пользователя:', error)
   }
 }
 
@@ -506,18 +489,21 @@ const initMap = () => {
 
 // Загрузка Яндекс.Карт API
 const loadYandexMapsApi = () => {
-  // Проверяем, загружен ли уже API
-  if (window.ymaps || document.getElementById('675fdace-ace0-42b7-8a12-29e2ceea5c70')) {
-    return initMap()
+  // Проверяем, загружен ли уже API (без использования ID скрипта)
+  if (window.ymaps) {
+    return initMap();
   }
   
+  // Получаем API ключ из конфигурации
+  const config = useRuntimeConfig();
+  const apiKey = config.public.yandexMapsApiKey;
+  
   // Добавляем скрипт на страницу
-  const script = document.createElement('script')
-  script.id = '675fdace-ace0-42b7-8a12-29e2ceea5c70'
-  script.src = 'https://api-maps.yandex.ru/2.1/?apikey=ВАШ_API_КЛЮЧ&lang=ru_RU'
-  script.async = true
-  script.onload = initMap
-  document.head.appendChild(script)
+  const script = document.createElement('script');
+  script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+  script.async = true;
+  script.onload = initMap;
+  document.head.appendChild(script);
 }
 
 // Основной метод загрузки данных
@@ -543,7 +529,6 @@ onMounted(async () => {
       // Загрузка данных пользователя, если есть токен
       if (token.value) {
         await loadUserData()
-        await checkIfSaved()
       }
       
       // Настройка заголовка страницы

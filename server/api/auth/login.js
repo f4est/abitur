@@ -69,12 +69,6 @@ export default defineEventHandler(async (event) => {
 
     console.log('Роль пользователя из БД:', user.role)
     
-    // Особая проверка для admin@gmail.com - принудительно устанавливаем роль ADMIN
-    if (normalizedEmail === 'admin@gmail.com') {
-      console.log('Найден пользователь admin@gmail.com, устанавливаем роль ADMIN')
-      user.role = 'ADMIN'
-    }
-
     // Создание JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },

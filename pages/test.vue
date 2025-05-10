@@ -79,7 +79,7 @@
                   v-model="selectedOption"
                   class="mr-3"
                 />
-                <span>{{ option.text }}</span>
+                <span class="text-gray-800">{{ option.text }}</span>
               </label>
             </div>
           </div>
@@ -110,8 +110,8 @@
 </template>
 
 <script setup>
-// Добавляем middleware для защиты страницы
 definePageMeta({
+  layout: 'default',
   middleware: 'auth'
 })
 

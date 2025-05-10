@@ -73,4 +73,21 @@
 - **Snow White**: #eef0eb (rgb - 238, 240, 235)
 - **Skyway**: #abbed1 (rgb - 170, 189, 208)
 - **Ashleigh Blue**: #6987a9 (rgb - 105, 135, 169)
-- **Yolk Yellow**: #e0ae50 (rgb - 224, 174, 80) 
+- **Yolk Yellow**: #e0ae50 (rgb - 224, 174, 80)
+
+## Переменные окружения
+
+Для работы некоторых функций приложения требуется создать файл `.env` в корне проекта со следующим содержимым:
+
+```
+# API ключи внешних сервисов
+YANDEX_MAPS_API_KEY=ваш_API_ключ_Яндекс_Карт
+
+# Настройки базы данных
+DATABASE_URL="file:./prisma/dev.db"
+
+# Секретный ключ для JWT
+JWT_SECRET="your_super_secret_jwt_key_for_abiturienty_project"
+```
+
+Замените `ваш_API_ключ_Яндекс_Карт` на действительный API ключ Яндекс.Карт. 

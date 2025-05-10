@@ -65,6 +65,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'default'
+})
+
 const formData = reactive({
   email: '',
   password: ''

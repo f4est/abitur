@@ -1,43 +1,31 @@
-export default defineNuxtRouteMiddleware(async (to, from) => {
-  // Проверяем, что мы на клиенте
+export default defineNuxtRouteMiddleware((to, from) => {
+  // Работаем только на клиенте
   if (!process.client) {
     return
   }
   
-  // Проверяем, есть ли токен в localStorage
-    const token = localStorage.getItem('token')
+  // Получаем токен и пользователя
+  const token = localStorage.getItem('token')
+  const userStr = localStorage.getItem('user')
 
-    // Избегаем бесконечный цикл перенаправлений
-    if (to.path === '/login') {
-      return
-    }
+  // Проверяем наличие токена
+  if (!token || !userStr) {
+    console.log("Middleware admin: Отсутствует токен или данные пользователя")
+    return navigateTo('/login')
+  }
 
-  if (!token) {
-    // Если токена нет, перенаправляем на страницу входа
-      return navigateTo('/login')
-    }
-
+  // Проверяем роль пользователя
   try {
-    // Проверяем, является ли пользователь администратором через API
-    const response = await fetch('/api/users/me', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    if (!response.ok) {
-      throw new Error('Ошибка при проверке статуса администратора')
-    }
-    
-    const data = await response.json()
-    
-    // Проверяем ответ от API
-    if (!data || !data.body || data.body.role !== 'ADMIN') {
-      // Если пользователь не является администратором, перенаправляем на главную
+    const user = JSON.parse(userStr)
+    if (user && user.role === 'ADMIN') {
+      console.log("Middleware admin: Проверка пройдена, пользователь ADMIN")
+      return // Разрешаем доступ
+    } else {
+      console.log("Middleware admin: Пользователь не является администратором")
       return navigateTo('/')
     }
-  } catch (error) {
-    console.error('Ошибка проверки прав администратора:', error)
+  } catch (e) {
+    console.error("Middleware admin: Ошибка при проверке данных пользователя", e)
     return navigateTo('/login')
   }
 }) 

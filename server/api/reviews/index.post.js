@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
       data: {
         schoolId: body.schoolId,
         userId: body.userId,
-        userName: user.name,
+        authorName: user.name,
         rating: body.rating,
         text: body.text,
         isApproved

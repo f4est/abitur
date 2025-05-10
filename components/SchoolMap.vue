@@ -12,42 +12,11 @@
     </div>
     
     <div v-else>
-      <!-- В реальном приложении здесь будет интеграция с API карт (Яндекс.Карты, Google Maps и т.д.) -->
-      <div class="rounded-lg overflow-hidden border border-gray-200 h-64 relative bg-gray-100">
-        <!-- Эмуляция карты -->
-        <div class="absolute inset-0 bg-skyway/20">
-          <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div class="w-8 h-8 bg-ashleigh rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-          </div>
-          
-          <!-- Эмуляция элементов карты -->
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="w-full h-full">
-              <div class="absolute top-0 left-0 w-full h-full">
-                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0,32 L100,96 L200,64 L300,128 L400,96 L500,160 L600,32" stroke="#AAC9CE" stroke-width="2" fill="none" class="opacity-70" />
-                  <path d="M0,128 L100,160 L200,128 L300,192 L400,160 L500,224 L600,128" stroke="#AAC9CE" stroke-width="2" fill="none" class="opacity-70" />
-                  <path d="M0,192 L100,224 L200,192 L300,256 L400,224 L500,288 L600,192" stroke="#AAC9CE" stroke-width="2" fill="none" class="opacity-70" />
-                </svg>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Текст на карте с адресом -->
-          <div class="absolute bottom-0 left-0 right-0 bg-white bg-opacity-90 p-3">
-            <div class="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span class="text-gray-800 font-medium">{{ address }}</span>
-            </div>
-          </div>
+      <!-- Контейнер для Яндекс.Карты -->
+      <div ref="mapContainer" class="rounded-lg overflow-hidden border border-gray-200 h-64 relative">
+        <!-- Эта надпись будет видна только до инициализации карты -->
+        <div v-if="!mapInitialized" class="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <p class="text-gray-700">Инициализация карты...</p>
         </div>
       </div>
       
@@ -58,7 +27,7 @@
           rel="noopener noreferrer"
           class="text-ashleigh hover:underline flex items-center"
         >
-          <span>Открыть в 2GIS</span>
+          <span>Открыть в Яндекс.Картах</span>
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
@@ -69,7 +38,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
+import { useRuntimeConfig } from 'nuxt/app';
 
 const props = defineProps({
   address: {
@@ -79,32 +49,204 @@ const props = defineProps({
   schoolName: {
     type: String,
     required: true
+  },
+  coordinates: {
+    type: String,
+    default: null
   }
 });
 
 const isLoading = ref(true);
 const hasMapData = ref(true);
-const coordinates = ref(null);
+const mapCoordinates = ref(null);
+const mapContainer = ref(null);
+const mapInstance = ref(null);
+const mapInitialized = ref(false);
+const ymapsLoaded = ref(false);
 
 // Создаем URL для открытия карты во внешнем сервисе
 const mapUrl = computed(() => {
+  // Если есть координаты, используем их для более точного открытия карты
+  if (props.coordinates) {
+    try {
+      const [lat, lng] = props.coordinates.split(',').map(coord => parseFloat(coord.trim()));
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return `https://yandex.ru/maps/?ll=${lng},${lat}&z=17&mode=whatshere&whatshere[point]=${lng},${lat}&whatshere[text]=${encodeURIComponent(props.schoolName)}`;
+      }
+    } catch (error) {
+      console.error('Ошибка при обработке координат:', error);
+    }
+  }
+  
+  // Если координаты не указаны или некорректны, используем поиск по адресу
   const searchQuery = `${props.schoolName}, ${props.address}`;
-  return `https://2gis.ru/search/${encodeURIComponent(searchQuery)}`;
+  return `https://yandex.ru/maps/?text=${encodeURIComponent(searchQuery)}`;
 });
 
-// Эмуляция загрузки данных для карты
+// Загружаем API Яндекс.Карт
+const loadYandexMapsAPI = () => {
+  return new Promise((resolve, reject) => {
+    // Проверяем, загружен ли уже API
+    if (window.ymaps) {
+      ymapsLoaded.value = true;
+      resolve(window.ymaps);
+      return;
+    }
+
+    // Получаем API ключ из конфигурации
+    const config = useRuntimeConfig();
+    const apiKey = config.public.yandexMapsApiKey;
+
+    // Создаем скрипт для загрузки API
+    const script = document.createElement('script');
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+    script.async = true;
+
+    script.onload = () => {
+      window.ymaps.ready(() => {
+        ymapsLoaded.value = true;
+        resolve(window.ymaps);
+      });
+    };
+
+    script.onerror = (error) => {
+      console.error('Ошибка при загрузке Яндекс.Карт:', error);
+      reject(error);
+    };
+
+    document.head.appendChild(script);
+  });
+};
+
+// Инициализируем карту
+const initializeMap = async (coordinates) => {
+  // Проверяем, загружен ли API
+  if (!ymapsLoaded.value) {
+    try {
+      await loadYandexMapsAPI();
+    } catch (error) {
+      console.error('Не удалось загрузить API Яндекс.Карт:', error);
+      hasMapData.value = false;
+      isLoading.value = false;
+      return;
+    }
+  }
+
+  // Если карта уже инициализирована, удаляем ее
+  if (mapInstance.value) {
+    mapInstance.value.destroy();
+    mapInstance.value = null;
+  }
+
+  // Ждем немного, чтобы DOM успел обновиться
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  if (!mapContainer.value) {
+    console.error('Контейнер для карты не найден');
+    // Еще раз попробуем через небольшой промежуток времени
+    setTimeout(() => {
+      if (mapContainer.value) {
+        initializeMap(coordinates);
+      } else {
+        console.error('Контейнер для карты не найден после повторной попытки');
+        hasMapData.value = false;
+        isLoading.value = false;
+      }
+    }, 500);
+    return;
+  }
+
+  try {
+    // Создаем карту
+    mapInstance.value = new window.ymaps.Map(mapContainer.value, {
+      center: [coordinates.lat, coordinates.lng],
+      zoom: 16,
+      controls: ['zoomControl', 'fullscreenControl']
+    });
+
+    // Добавляем метку на карту
+    const placemark = new window.ymaps.Placemark(
+      [coordinates.lat, coordinates.lng],
+      {
+        hintContent: props.schoolName,
+        balloonContent: `<strong>${props.schoolName}</strong><br>${props.address}`
+      },
+      {
+        preset: 'islands#redDotIcon'
+      }
+    );
+
+    mapInstance.value.geoObjects.add(placemark);
+    mapInitialized.value = true;
+  } catch (error) {
+    console.error('Ошибка при инициализации карты:', error);
+    hasMapData.value = false;
+  }
+};
+
+// Геокодирование адреса для получения координат
+const geocodeAddress = async () => {
+  if (!ymapsLoaded.value) {
+    try {
+      await loadYandexMapsAPI();
+    } catch (error) {
+      console.error('Не удалось загрузить API Яндекс.Карт:', error);
+      hasMapData.value = false;
+      isLoading.value = false;
+      return null;
+    }
+  }
+
+  const searchQuery = `${props.address}, ${props.schoolName}`;
+
+  try {
+    const result = await window.ymaps.geocode(searchQuery);
+    const firstGeoObject = result.geoObjects.get(0);
+    
+    if (!firstGeoObject) {
+      console.error('Не удалось найти координаты для адреса:', searchQuery);
+      return null;
+    }
+    
+    const coords = firstGeoObject.geometry.getCoordinates();
+    return { lat: coords[0], lng: coords[1] };
+  } catch (error) {
+    console.error('Ошибка при геокодировании адреса:', error);
+    return null;
+  }
+};
+
+// Загрузка данных для карты
 const loadMapData = async () => {
   isLoading.value = true;
+  mapInitialized.value = false;
   
   try {
-    // В реальном приложении здесь будет запрос к геокодеру для получения координат по адресу
-    // Имитация запроса к API
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Проверяем переданные координаты
+    if (props.coordinates) {
+      try {
+        const [lat, lng] = props.coordinates.split(',').map(coord => parseFloat(coord.trim()));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          mapCoordinates.value = { lat, lng };
+          hasMapData.value = true;
+          await initializeMap(mapCoordinates.value);
+          return;
+        }
+      } catch (error) {
+        console.error('Ошибка при обработке координат:', error);
+      }
+    }
     
-    // Фиктивные данные для примера
+    // Если координаты не указаны или некорректны, используем геокодирование по адресу
     if (props.address) {
-      coordinates.value = { lat: 55.755826, lng: 37.6173 }; // Фиктивные координаты для примера
-      hasMapData.value = true;
+      const coordinates = await geocodeAddress();
+      if (coordinates) {
+        mapCoordinates.value = coordinates;
+        hasMapData.value = true;
+        await initializeMap(mapCoordinates.value);
+      } else {
+        hasMapData.value = false;
+      }
     } else {
       hasMapData.value = false;
     }
@@ -118,11 +260,24 @@ const loadMapData = async () => {
 
 // Жизненный цикл
 onMounted(() => {
-  loadMapData();
+  // Проверяем, что мы находимся в браузере, а не на сервере
+  if (process.client) {
+    loadMapData();
+  }
 });
 
 // Следим за изменением адреса и перезагружаем карту
-watch(() => props.address, () => {
-  loadMapData();
+watch(() => [props.address, props.coordinates], () => {
+  if (process.client) {
+    loadMapData();
+  }
+});
+
+// Очищаем карту при уничтожении компонента
+onBeforeUnmount(() => {
+  if (mapInstance.value) {
+    mapInstance.value.destroy();
+    mapInstance.value = null;
+  }
 });
 </script> 

@@ -1,4 +1,5 @@
-import prisma from '../../utils/prisma'
+import { prisma } from '~/server/db/prisma'
+import { verifyToken } from '~/server/utils/auth'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 
@@ -8,28 +9,31 @@ export default defineEventHandler(async (event) => {
   console.log(`Обработка ${method} запроса в users/me.js`)
   
   try {
-    // Получаем токен из заголовка авторизации
-    const authHeader = getRequestHeader(event, 'authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('Ошибка авторизации: нет или неверный формат токена')
-      return {
+    // Проверяем авторизацию
+    const tokenUser = await verifyToken(event)
+    console.log('Данные пользователя из токена:', tokenUser)
+    
+    if (!tokenUser) {
+      console.error('Ошибка авторизации: токен отсутствует или недействителен')
+      return createError({
         statusCode: 401,
-        body: { message: 'Токен авторизации отсутствует или неверного формата' }
-      }
+        message: 'Необходима авторизация'
+      })
     }
 
-    const token = authHeader.split(' ')[1]
-    const config = useRuntimeConfig()
+    // Защита от неверного ID
+    if (!tokenUser.id || isNaN(parseInt(tokenUser.id))) {
+      console.error('Недопустимый ID пользователя в токене:', tokenUser.id)
+      return createError({
+        statusCode: 400,
+        message: 'Некорректный идентификатор пользователя'
+      })
+    }
 
-    // Проверяем токен
-    const decoded = jwt.verify(token, config.JWT_SECRET)
-    console.log('Пользователь авторизован, ID:', decoded.id)
-    
-    // GET запрос - получение данных пользователя
-    if (method === 'GET') {
-      // Получаем данные пользователя из базы данных
+    // Получаем данные пользователя из базы данных
+    try {
       const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
+        where: { id: tokenUser.id },
         select: {
           id: true,
           name: true,
@@ -48,113 +52,61 @@ export default defineEventHandler(async (event) => {
       })
 
       if (!user) {
-        console.log('Пользователь не найден в БД')
-        return {
+        console.error(`Пользователь с ID ${tokenUser.id} не найден в базе данных`)
+        return createError({
           statusCode: 404,
-          body: { message: 'Пользователь не найден' }
-        }
-      }
-
-      // Проверка на admin@gmail.com и принудительная установка роли ADMIN
-      if (user.email && user.email.toLowerCase() === 'admin@gmail.com') {
-        console.log('GET /users/me: Обнаружен пользователь admin@gmail.com, устанавливаем роль ADMIN')
-        user.role = 'ADMIN'
-        // Обновляем роль пользователя в базе данных
-        try {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { role: 'ADMIN' }
-          })
-          console.log('Роль пользователя обновлена в базе данных')
-        } catch (updateError) {
-          console.error('Ошибка при обновлении роли пользователя:', updateError)
-        }
-      }
-
-      console.log('Данные пользователя успешно получены, роль:', user.role)
-      return {
-        body: user
-      }
-    }
-    
-    // PUT запрос - обновление данных пользователя
-    if (method === 'PUT') {
-      console.log('Обрабатываем PUT запрос для обновления профиля')
-      
-      // Читаем данные из тела запроса
-      const body = await readBody(event)
-      console.log('Получены данные для обновления:', body)
-      
-      const { name, avatarUrl, password } = body
-      
-      // Формируем объект с данными для обновления
-      const updateData = {}
-      if (name) updateData.name = name
-      if (avatarUrl) updateData.avatarUrl = avatarUrl
-      
-      console.log('Данные для обновления после обработки:', updateData)
-      
-      // Если указан новый пароль, хешируем его
-      if (password) {
-        updateData.password = await bcrypt.hash(password, 10)
-        console.log('Пароль хеширован и добавлен в данные для обновления')
-      }
-      
-      // Обновляем данные пользователя в БД
-      console.log('Выполняем обновление пользователя в БД')
-      const updatedUser = await prisma.user.update({
-        where: { id: decoded.id },
-        data: updateData
-      })
-      
-      console.log('Пользователь успешно обновлен в БД')
-      
-      // Проверка на admin@gmail.com и принудительная установка роли ADMIN
-      if (updatedUser.email && updatedUser.email.toLowerCase() === 'admin@gmail.com' && updatedUser.role !== 'ADMIN') {
-        console.log('PUT /users/me: Обнаружен пользователь admin@gmail.com, устанавливаем роль ADMIN')
-        await prisma.user.update({
-          where: { id: updatedUser.id },
-          data: { role: 'ADMIN' }
+          message: 'Пользователь не найден'
         })
-        updatedUser.role = 'ADMIN'
-        console.log('Роль пользователя обновлена на ADMIN')
       }
+
+      console.log('Данные пользователя найдены в БД, роль:', user.role)
       
-      // Исключаем пароль из ответа
-      const { password: _, ...userWithoutPassword } = updatedUser
-      
-      // Возвращаем обновленные данные
-      return {
-        body: userWithoutPassword
+      // Проверяем, совпадает ли роль в токене с ролью в БД
+      if (tokenUser.role !== user.role) {
+        console.log(`Обнаружено несоответствие ролей. В токене: ${tokenUser.role}, в БД: ${user.role}`)
+        console.log('Обновляем данные в токене...')
+        
+        // Создаем новый токен с обновленной ролью
+        const config = useRuntimeConfig()
+        if (!config.JWT_SECRET) {
+          console.error('Ошибка: секретный ключ JWT не найден в конфигурации')
+          return createError({
+            statusCode: 500,
+            message: 'Ошибка конфигурации сервера'
+          })
+        }
+        
+        try {
+          const newToken = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            config.JWT_SECRET,
+            { expiresIn: '7d' }
+          )
+          
+          // Добавляем токен в заголовок ответа
+          event.node.res.setHeader('X-New-Token', newToken)
+        } catch (jwtError) {
+          console.error('Ошибка при создании нового токена:', jwtError)
+          // Продолжаем выполнение даже при ошибке создания токена
+        }
       }
+
+      // Возвращаем данные пользователя напрямую
+      return user
+    } catch (dbError) {
+      console.error('Ошибка запроса к базе данных:', dbError)
+      return createError({
+        statusCode: 500,
+        message: 'Ошибка базы данных',
+        detail: dbError.message
+      })
     }
-    
-    // Если метод не GET и не PUT
-    return {
-      statusCode: 405,
-      body: { message: 'Метод не поддерживается' }
-    }
-    
   } catch (error) {
-    console.error('Ошибка при обработке запроса:', error)
-    
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return {
-        statusCode: 401,
-        body: { message: 'Недействительный или истекший токен' }
-      }
-    }
-    
-    if (error.code === 'P2025') {
-      return {
-        statusCode: 404,
-        body: { message: 'Пользователь не найден' }
-      }
-    }
-    
-    return {
+    console.error('Ошибка при получении данных пользователя:', error)
+    return createError({
       statusCode: 500,
-      body: { message: `Внутренняя ошибка сервера: ${error.message}` }
-    }
+      message: 'Внутренняя ошибка сервера',
+      detail: error.message
+    })
   }
 }) 

@@ -139,6 +139,10 @@
 </template>
 
 <script setup>
+definePageMeta({
+  layout: 'default'
+})
+
 useHead({
   title: 'Главная - Платформа для абитуриентов',
   meta: [

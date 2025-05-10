@@ -1,4 +1,4 @@
-import prisma from '../../utils/prisma'
+import { prisma } from '~/server/db/prisma'
 import jwt from 'jsonwebtoken'
 
 // Проверка авторизации
@@ -111,7 +111,11 @@ export default defineEventHandler(async (event) => {
       const existingSchool = await prisma.school.findUnique({
         where: { id },
         include: {
-          programs: true
+          programs: {
+            include: {
+              examRequirements: true
+            }
+          }
         }
       })
       
@@ -126,22 +130,29 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event)
       
       // Извлекаем данные о программах для отдельной обработки
-      const { programs, email, phone, ...restData } = body
+      const { programs, email, phone, coordinates, ...restData } = body
       
-      // Комбинируем email и phone в поле contacts, если они есть
-      const contactsData = {}
-      if (email || phone) {
-        let contactsStr = '';
-        if (email) contactsStr += `Email: ${email}`;
-        if (email && phone) contactsStr += ', ';
-        if (phone) contactsStr += `Телефон: ${phone}`;
-        contactsData.contacts = contactsStr || existingSchool.contacts;
+      // Комбинируем email и phone в поле contacts
+      let contactsStr = '';
+      if (email) contactsStr += `Email: ${email}`;
+      if (email && phone) contactsStr += ', ';
+      if (phone) contactsStr += `Телефон: ${phone}`;
+      
+      // Обрабатываем координаты
+      let coordinatesStr = null;
+      if (coordinates) {
+        if (typeof coordinates === 'object' && coordinates.lat && coordinates.lng) {
+          coordinatesStr = `${coordinates.lat},${coordinates.lng}`;
+        } else if (typeof coordinates === 'string') {
+          coordinatesStr = coordinates;
+        }
       }
 
       // Формируем итоговый объект для обновления
       const schoolData = {
         ...restData,
-        ...contactsData
+        contacts: contactsStr || existingSchool.contacts,
+        coordinates: coordinatesStr || existingSchool.coordinates
       }
       
       // Обновляем основные данные школы
@@ -178,29 +189,39 @@ export default defineEventHandler(async (event) => {
         
         // Обновляем существующие программы
         for (const program of programsToUpdate) {
+          const { examRequirements, ...programData } = program;
+          
           await prisma.educationalProgram.update({
             where: { id: program.id },
             data: {
-              name: program.name,
-              code: program.code || '',
-              description: program.description || '',
-              duration: program.duration || '',
-              price: program.price ? parseFloat(program.price) : null
+              ...programData,
+              examRequirements: {
+                deleteMany: {},
+                create: examRequirements?.map(req => ({
+                  name: req.name,
+                  minScore: req.minScore
+                })) || []
+              }
             }
           });
         }
         
         // Создаем новые программы
         for (const program of programsToCreate) {
-          if (program.name && program.name.trim()) {
+          const { examRequirements, ...programData } = program;
+          
+          if (programData.name && programData.name.trim()) {
             await prisma.educationalProgram.create({
               data: {
-                name: program.name.trim(),
-                code: program.code || '',
-                description: program.description || '',
-                duration: program.duration || '',
-                price: program.price ? parseFloat(program.price) : null,
-                schoolId: id
+                ...programData,
+                name: programData.name.trim(),
+                schoolId: id,
+                examRequirements: {
+                  create: examRequirements?.map(req => ({
+                    name: req.name,
+                    minScore: req.minScore
+                  })) || []
+                }
               }
             });
           }
@@ -211,37 +232,19 @@ export default defineEventHandler(async (event) => {
       const fullUpdatedSchool = await prisma.school.findUnique({
         where: { id },
         include: {
-          programs: true,
-          photos: true
+          programs: {
+            include: {
+              examRequirements: true
+            }
+          },
+          photos: true,
+          reviews: true
         }
       });
       
-      // Извлекаем email и телефон из поля contacts
-      let updatedEmail = '';
-      let updatedPhone = '';
-      
-      if (fullUpdatedSchool.contacts) {
-        const emailMatch = fullUpdatedSchool.contacts.match(/Email: ([^,]+)/i);
-        if (emailMatch && emailMatch[1]) {
-          updatedEmail = emailMatch[1].trim();
-        }
-        
-        const phoneMatch = fullUpdatedSchool.contacts.match(/Телефон: ([^,]+)/i);
-        if (phoneMatch && phoneMatch[1]) {
-          updatedPhone = phoneMatch[1].trim();
-        }
-      }
-      
-      // Форматируем ответ, добавляя поля email и phone для удобства клиента
-      const formattedUpdatedSchool = {
-        ...fullUpdatedSchool,
-        email: updatedEmail,
-        phone: updatedPhone
-      };
-      
       return {
         statusCode: 200,
-        body: formattedUpdatedSchool
+        body: fullUpdatedSchool
       }
     }
     

@@ -5,22 +5,17 @@ import jwt from 'jsonwebtoken'
  * @param {Object} event - Объект события Nuxt
  * @returns {Object|null} - Данные пользователя или null, если токен недействителен
  */
-export function verifyToken(event) {
+export const verifyToken = (event) => {
+  const authHeader = getRequestHeader(event, 'authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null
+  }
+
+  const token = authHeader.split(' ')[1]
   try {
-    // Получаем токен из заголовка авторизации
-    const authHeader = getRequestHeader(event, 'authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return null
-    }
-
-    const token = authHeader.split(' ')[1]
     const config = useRuntimeConfig()
-
-    // Проверяем токен
-    const decoded = jwt.verify(token, config.JWT_SECRET)
-    return decoded
+    return jwt.verify(token, config.JWT_SECRET)
   } catch (error) {
-    console.error('Ошибка проверки токена:', error)
     return null
   }
 }
@@ -30,6 +25,6 @@ export function verifyToken(event) {
  * @param {Object} user - Данные пользователя из токена
  * @returns {boolean} - true, если пользователь админ, иначе false
  */
-export function isAdmin(user) {
+export const isAdmin = (user) => {
   return user && user.role === 'ADMIN'
 } 
