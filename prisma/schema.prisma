@@ -69,6 +69,7 @@ model School {
   programs            EducationalProgram[]
   savedByUsers        SavedSchool[]
   reviews             Review[]
+  reviews2GIS         Review2GIS[]
 
   @@map("School")
 }
@@ -142,6 +143,20 @@ model Review {
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("Review")
+}
+
+model Review2GIS {
+  id          Int      @id @default(autoincrement())
+  text        String   // Текст отзыва
+  rating      Int      // Оценка (от 1 до 5)
+  authorName  String   // Имя автора отзыва
+  date        DateTime @default(now()) // Дата отзыва
+  schoolId    Int      // ID школы, к которой относится отзыв
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  isSelected  Boolean  @default(true) // Выбран ли отзыв для отображения
+  createdAt   DateTime @default(now()) // Дата добавления в систему
+  
+  @@map("Review2GIS")
 }
 
 enum Role {

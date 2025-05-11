@@ -139,7 +139,7 @@ const handleFileSelect = async (event) => {
         body: formData,
         headers: {
           // Добавляем токен авторизации из localStorage
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
         }
       })
       

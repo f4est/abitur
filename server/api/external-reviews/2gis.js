@@ -120,7 +120,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    if (!url.includes('2gis.ru')) {
+    if (!url.includes('2gis.ru') && !url.includes('2gis.kz')) {
       return {
         statusCode: 400,
         body: { message: 'Указанный URL не является ссылкой на 2GIS' }

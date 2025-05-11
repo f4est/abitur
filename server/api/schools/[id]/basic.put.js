@@ -70,6 +70,7 @@ export default defineEventHandler(async (event) => {
     if (body.email !== undefined) updateData.email = body.email
     if (body.website !== undefined) updateData.website = body.website
     if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl
+    if (body.category !== undefined) updateData.category = body.category
     
     // Обработка поля contacts
     if (body.contacts !== undefined) {
@@ -85,6 +86,13 @@ export default defineEventHandler(async (event) => {
         updateData.contacts = typeof body.contacts === 'string' 
           ? body.contacts 
           : JSON.stringify(body.contacts);
+          
+        // Обновляем отдельные поля из структуры contacts
+        if (contacts.fax) updateData.faxNumber = contacts.fax;
+        if (contacts.messengers) updateData.messengers = JSON.stringify(contacts.messengers);
+        if (contacts.workingHours) updateData.workingHours = contacts.workingHours;
+        if (contacts.socialNetworks) updateData.socialNetworks = JSON.stringify(contacts.socialNetworks);
+        if (contacts.phones) updateData.additionalPhones = JSON.stringify(contacts.phones);
       } catch (error) {
         console.error('API schools/[id]/basic: Ошибка обработки contacts:', error.message);
       }
@@ -96,6 +104,34 @@ export default defineEventHandler(async (event) => {
     if (body.messengers !== undefined) updateData.messengers = body.messengers
     if (body.workingHours !== undefined) updateData.workingHours = body.workingHours
     if (body.socialNetworks !== undefined) updateData.socialNetworks = body.socialNetworks
+    
+    // Сохраняем фотографии, если они есть в запросе
+    if (body.photos && Array.isArray(body.photos)) {
+      console.log(`API schools/[id]/basic: Получены фотографии: ${body.photos.length} шт.`)
+      
+      try {
+        // Сначала удалим все существующие фотографии для этой школы
+        await prisma.schoolPhoto.deleteMany({
+          where: { schoolId: schoolId }
+        })
+        
+        // Затем создадим новые записи для каждой фотографии
+        const photoPromises = body.photos.map(photo => 
+          prisma.schoolPhoto.create({
+            data: {
+              url: photo.url,
+              description: photo.description || '',
+              schoolId: schoolId
+            }
+          })
+        )
+        
+        await Promise.all(photoPromises)
+        console.log(`API schools/[id]/basic: Сохранено ${body.photos.length} фотографий`)
+      } catch (photoError) {
+        console.error('API schools/[id]/basic: Ошибка при сохранении фотографий:', photoError)
+      }
+    }
     
     // Обрабатываем координаты
     if (body.latitude !== undefined && body.longitude !== undefined) {
@@ -146,12 +182,6 @@ export default defineEventHandler(async (event) => {
     console.log('API schools/[id]/basic: Данные для обновления:', updateData)
     
     try {
-      // Удаляем поле category, если оно каким-то образом осталось в объекте updateData
-      if (updateData.category !== undefined) {
-        delete updateData.category
-        console.log('API schools/[id]/basic: Удалено поле category из данных для обновления')
-      }
-      
       // Обновляем основную информацию о школе
       const updatedSchool = await prisma.school.update({
         where: { id: schoolId },
@@ -160,12 +190,20 @@ export default defineEventHandler(async (event) => {
       
       console.log(`API schools/[id]/basic: Школа успешно обновлена: ${updatedSchool.id}`, JSON.stringify(updatedSchool, null, 2))
       
+      // Загружаем полные данные школы, включая фотографии
+      const schoolWithPhotos = await prisma.school.findUnique({
+        where: { id: updatedSchool.id },
+        include: {
+          photos: true
+        }
+      })
+      
       // Возвращаем обновленные данные
       setResponseStatus(event, 200)
       return {
         status: 200,
         message: 'Основная информация о школе успешно обновлена',
-        data: updatedSchool
+        data: schoolWithPhotos
       }
     } catch (dbError) {
       console.error('API schools/[id]/basic: Ошибка при обновлении в базе данных:', dbError)

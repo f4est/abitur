@@ -120,12 +120,16 @@ const handleFileSelect = async (event) => {
         console.log(`Загрузка файла ${i+1}/${files.length}: ${file.name}`)
         
         try {
+          // Получаем токен авторизации из localStorage
+          const token = localStorage.getItem('token')
+          
           // Отправляем файл на сервер
           const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
             headers: {
-              // Authorization заголовок будет добавлен автоматически
+              // Добавляем токен авторизации
+              'Authorization': token ? `Bearer ${token}` : ''
             }
           })
           

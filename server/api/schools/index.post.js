@@ -48,9 +48,20 @@ export default defineEventHandler(async (event) => {
     // Устанавливаем контакты из объекта contacts
     if (body.contacts) {
       try {
+        const contactsObj = typeof body.contacts === 'string'
+          ? JSON.parse(body.contacts)
+          : body.contacts;
+          
         schoolData.contacts = typeof body.contacts === 'string'
           ? body.contacts
-          : JSON.stringify(body.contacts)
+          : JSON.stringify(body.contacts);
+          
+        // Обновляем отдельные поля из структуры contacts
+        if (contactsObj.fax) schoolData.faxNumber = contactsObj.fax;
+        if (contactsObj.messengers) schoolData.messengers = JSON.stringify(contactsObj.messengers);
+        if (contactsObj.workingHours) schoolData.workingHours = contactsObj.workingHours;
+        if (contactsObj.socialNetworks) schoolData.socialNetworks = JSON.stringify(contactsObj.socialNetworks);
+        if (contactsObj.phones) schoolData.additionalPhones = JSON.stringify(contactsObj.phones);
       } catch (error) {
         console.error('API schools/index: Ошибка обработки contacts:', error.message)
       }
@@ -89,12 +100,42 @@ export default defineEventHandler(async (event) => {
       
       console.log('API schools/index: Школа успешно создана:', createdSchool)
       
+      // Обрабатываем фотографии, если они есть
+      if (body.photos && Array.isArray(body.photos) && body.photos.length > 0) {
+        console.log(`API schools/index: Обработка ${body.photos.length} фотографий`)
+        
+        try {
+          const photoPromises = body.photos.map(photo => 
+            prisma.schoolPhoto.create({
+              data: {
+                url: photo.url,
+                description: photo.description || '',
+                schoolId: createdSchool.id
+              }
+            })
+          )
+          
+          await Promise.all(photoPromises)
+          console.log(`API schools/index: Сохранено ${body.photos.length} фотографий`)
+        } catch (photoError) {
+          console.error('API schools/index: Ошибка при сохранении фотографий:', photoError)
+        }
+      }
+      
+      // Загружаем полные данные школы, включая фотографии
+      const schoolWithPhotos = await prisma.school.findUnique({
+        where: { id: createdSchool.id },
+        include: {
+          photos: true
+        }
+      })
+      
       // Возвращаем созданные данные
       setResponseStatus(event, 201)
       return {
         status: 201,
         message: 'Учебное заведение успешно создано',
-        body: createdSchool
+        body: schoolWithPhotos
       }
     } catch (dbError) {
       console.error('API schools/index: Ошибка при создании в базе данных:', dbError)

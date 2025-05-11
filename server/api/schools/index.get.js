@@ -59,6 +59,12 @@ export default defineEventHandler(async (event) => {
         address: true,
         logoUrl: true,
         description: true,
+        category: true,
+        phoneNumber: true,
+        email: true,
+        website: true,
+        latitude: true,
+        longitude: true,
         _count: {
           select: {
             programs: true,
@@ -72,6 +78,13 @@ export default defineEventHandler(async (event) => {
           },
           select: {
             rating: true
+          }
+        },
+        photos: {
+          select: {
+            id: true,
+            url: true,
+            description: true
           }
         }
       },
@@ -114,11 +127,46 @@ export default defineEventHandler(async (event) => {
         averageRating = reviewCount > 0 ? (totalRating / reviewCount).toFixed(1) : null;
       }
 
+      // Нормализация URL фотографий
+      const normalizedPhotos = school.photos ? school.photos.map(photo => {
+        let photoUrl = photo.url;
+        
+        // Если URL не начинается с / или http, считаем его относительным и добавляем /
+        if (photoUrl && !photoUrl.startsWith('/') && !photoUrl.startsWith('http')) {
+          photoUrl = `/${photoUrl}`;
+        }
+        
+        // Если URL начинается с /, убедимся что файл существует на сервере
+        if (photoUrl && photoUrl.startsWith('/')) {
+          try {
+            const filePath = path.join(process.cwd(), 'public', photoUrl);
+            // Если файл не существует, сбрасываем URL
+            if (!fs.existsSync(filePath)) {
+              console.warn(`Фото не найдено на сервере: ${filePath}`);
+              photoUrl = null;
+            }
+          } catch (error) {
+            console.error(`Ошибка при проверке фото: ${error.message}`);
+            // При ошибке проверки не меняем URL
+          }
+        }
+        
+        return {
+          ...photo,
+          url: photoUrl
+        };
+      }) : [];
+
       return {
         ...school,
         logoUrl: normalizedLogoUrl,
         averageRating,
         reviewCount,
+        phone: school.phoneNumber,
+        photos: normalizedPhotos,
+        coordinates: school.latitude !== null && school.longitude !== null 
+          ? `${school.latitude},${school.longitude}` 
+          : null,
         // Удаляем полные отзывы из ответа, так как нам нужны только средние значения
         reviews: undefined 
       };

@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "School" ADD COLUMN "category" TEXT;
+ALTER TABLE "School" ADD COLUMN "contacts" TEXT;
+
+-- CreateTable
+CREATE TABLE "Review2GIS" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "text" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL,
+    "authorName" TEXT NOT NULL,
+    "date" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "schoolId" INTEGER NOT NULL,
+    "isSelected" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Review2GIS_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);

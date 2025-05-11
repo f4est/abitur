@@ -31,9 +31,12 @@ export default defineEventHandler(async (event) => {
   
   try {
     // Проверяем авторизацию
+    const authHeader = getRequestHeader(event, 'authorization')
+    console.log(`API upload/index.post: Заголовок авторизации: ${authHeader ? 'присутствует' : 'отсутствует'}`)
+    
     const user = verifyToken(event)
     if (!user) {
-      console.log('API upload/index.post: Ошибка авторизации')
+      console.log('API upload/index.post: Ошибка авторизации, токен недействителен или отсутствует')
       setResponseStatus(event, 401)
       return {
         status: 401,
@@ -43,7 +46,7 @@ export default defineEventHandler(async (event) => {
     
     // Проверяем права администратора для определенных типов загрузки
     const isAdmin = user.role === 'ADMIN'
-    console.log(`API upload/index.post: Пользователь ${user.id}, роль: ${user.role}`)
+    console.log(`API upload/index.post: Пользователь авторизован, ID: ${user.id}, роль: ${user.role}`)
     
     // Получаем multipart/form-data
     const formData = await readMultipartFormData(event)

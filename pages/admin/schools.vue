@@ -440,30 +440,15 @@
               <h3 class="text-lg font-medium">Отзывы из 2GIS</h3>
               <button
                 type="button"
-                @click="fetchExternalReviews"
-                class="px-3 py-1 bg-skyway text-white rounded hover:bg-opacity-90 text-sm"
-                :disabled="isImportingReviews"
+                @click="addExternalReview"
+                class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
               >
-                <span v-if="isImportingReviews">Загрузка...</span>
-                <span v-else>Импортировать отзывы</span>
+                + Добавить отзыв
               </button>
             </div>
             
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700 mb-1">URL страницы заведения в 2GIS</label>
-              <input
-                v-model="schoolForm.externalUrl"
-                type="url"
-                class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
-                placeholder="https://2gis.ru/..."
-              />
-              <p class="text-xs text-gray-500 mt-1">
-                Укажите полный URL страницы учреждения в 2GIS для импорта отзывов. Например: https://2gis.ru/almaty/firm/...
-              </p>
-            </div>
-            
             <div v-if="schoolForm.externalReviews && schoolForm.externalReviews.length > 0" class="bg-gray-50 p-3 rounded-lg mb-3">
-              <h4 class="font-medium mb-2">Найдено внешних отзывов: {{ schoolForm.externalReviews.length }}</h4>
+              <h4 class="font-medium mb-2">Добавленные отзывы: {{ schoolForm.externalReviews.length }}</h4>
               <div class="max-h-60 overflow-y-auto border rounded-lg bg-white">
                 <div v-for="(review, index) in schoolForm.externalReviews" :key="`ext-${index}`" 
                   class="p-3 border-b last:border-b-0 flex justify-between items-start"
@@ -480,12 +465,19 @@
                     </div>
                     <p class="text-sm text-gray-700 line-clamp-2">{{ review.text }}</p>
                   </div>
-                  <div class="flex items-center">
+                  <div class="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       v-model="review.selected"
                       class="w-4 h-4 text-ashleigh border-gray-300 rounded focus:ring-ashleigh"
                     />
+                    <button
+                      type="button"
+                      @click="removeExternalReview(index)"
+                      class="text-red-500 hover:text-red-700"
+                    >
+                      ×
+                    </button>
                   </div>
                 </div>
               </div>
@@ -695,6 +687,80 @@
         </div>
       </div>
     </div>
+
+    <!-- Добавим модальное окно для добавления отзыва -->
+    <div v-if="openAddReviewModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+        <h2 class="text-xl font-semibold mb-4">Добавить отзыв из 2GIS</h2>
+        
+        <form @submit.prevent="submitExternalReview" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Имя автора *</label>
+            <input
+              v-model="reviewForm.authorName"
+              type="text"
+              required
+              class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+              placeholder="Имя автора отзыва"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Текст отзыва *</label>
+            <textarea
+              v-model="reviewForm.text"
+              rows="3"
+              required
+              class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+              placeholder="Текст отзыва"
+            ></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Оценка *</label>
+            <div class="flex items-center space-x-2">
+              <template v-for="rating in 5" :key="rating">
+                <button 
+                  type="button"
+                  @click="reviewForm.rating = rating"
+                  class="text-2xl focus:outline-none"
+                  :class="reviewForm.rating >= rating ? 'text-yellow-400' : 'text-gray-300'"
+                >
+                  ★
+                </button>
+              </template>
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+            <input
+              v-model="reviewForm.date"
+              type="date"
+              class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+            />
+          </div>
+          
+          <div class="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              @click="openAddReviewModal = false"
+              class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-sm"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              class="px-3 py-2 bg-ashleigh hover:bg-opacity-90 text-white rounded-lg text-sm flex items-center"
+              :disabled="isSubmittingReview"
+            >
+              <span v-if="isSubmittingReview" class="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+              Добавить
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -712,6 +778,16 @@ import ModalWrapper from '~/components/ModalWrapper.vue'
 const isLoading = ref(true)
 const isSubmitting = ref(false)
 const isMapLoading = ref(false)
+
+// Добавим переменные для работы с отзывами
+const openAddReviewModal = ref(false)
+const isSubmittingReview = ref(false)
+const reviewForm = ref({
+  authorName: '',
+  text: '',
+  rating: 5,
+  date: new Date().toISOString().substr(0, 10) // Текущая дата в формате YYYY-MM-DD
+})
 
 // Параметры запроса
 const searchQuery = ref('')
@@ -774,7 +850,6 @@ const schoolForm = ref({
   messengers: [],
   workingHours: '',
   socialNetworks: [],
-  externalUrl: '',
   externalReviews: []
 })
 
@@ -827,6 +902,13 @@ async function loadSchools() {
       if (response && response.body) {
         schools.value = response.body
         totalSchools.value = response.total || schools.value.length
+        
+        // Выводим в консоль полученные данные для проверки наличия всех полей
+        console.log('Данные школ загружены:', schools.value.map(s => ({
+          id: s.id,
+          name: s.name,
+          fields: Object.keys(s)
+        })))
       } else {
         schools.value = []
         totalSchools.value = 0
@@ -846,9 +928,6 @@ async function loadSchools() {
     isLoading.value = false
   }
 }
-
-// Добавим новые состояния для работы с фотографиями и внешними отзывами
-const isImportingReviews = ref(false)
 
 // Добавление школы
 async function addSchool() {
@@ -912,7 +991,9 @@ async function addSchool() {
       longitude: longitude,
       // Контактная информация
       contacts: JSON.stringify(contactsObject),
-      logoUrl: schoolForm.value.logoUrl || null
+      logoUrl: schoolForm.value.logoUrl || null,
+      // Добавляем фотографии
+      photos: schoolForm.value.photos || []
     }
 
     console.log('Отправка данных для создания школы:', JSON.stringify(schoolData, null, 2));
@@ -957,49 +1038,129 @@ async function addSchool() {
 }
 
 // Редактирование школы
-function editSchool(school) {
-  // Разбираем контакты из JSON строки, если они есть
-  let contactData = {}
-  if (school.contacts) {
-    try {
-      contactData = typeof school.contacts === 'string' 
-        ? JSON.parse(school.contacts) 
-        : school.contacts
-    } catch (e) {
-      console.error('Ошибка при разборе контактных данных:', e)
+async function editSchool(school) {
+  console.log('Начинаем редактирование школы:', school.id);
+  
+  try {
+    // Загружаем полные данные о школе
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigateTo('/login');
+      return;
     }
+    
+    isLoading.value = true;
+    
+    // Загружаем детальные данные школы
+    const response = await $fetch(`/api/schools/${school.id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!response || !response.body) {
+      throw new Error('Не удалось загрузить данные о школе');
+    }
+    
+    // Используем полученные детальные данные
+    const schoolDetails = response.body;
+    console.log('Загружены полные данные о школе:', schoolDetails);
+    console.log('Поля в данных школы:', Object.keys(schoolDetails));
+    
+    // Разбираем контакты из JSON строки, если они есть
+    let contactData = {}
+    if (schoolDetails.contacts) {
+      try {
+        contactData = typeof schoolDetails.contacts === 'string' 
+          ? JSON.parse(schoolDetails.contacts) 
+          : schoolDetails.contacts
+      } catch (e) {
+        console.error('Ошибка при разборе контактных данных:', e)
+      }
+    }
+    
+    // Разбираем дополнительные телефоны из additionalPhones, если они есть
+    let additionalPhones = []
+    if (schoolDetails.additionalPhones) {
+      try {
+        additionalPhones = typeof schoolDetails.additionalPhones === 'string'
+          ? JSON.parse(schoolDetails.additionalPhones)
+          : schoolDetails.additionalPhones
+      } catch (e) {
+        console.error('Ошибка при разборе дополнительных телефонов:', e)
+      }
+    }
+    
+    // Разбираем мессенджеры из messengers, если они есть
+    let messengers = []
+    if (schoolDetails.messengers) {
+      try {
+        messengers = typeof schoolDetails.messengers === 'string'
+          ? JSON.parse(schoolDetails.messengers)
+          : schoolDetails.messengers
+      } catch (e) {
+        console.error('Ошибка при разборе мессенджеров:', e)
+      }
+    }
+    
+    // Разбираем социальные сети из socialNetworks, если они есть
+    let socialNetworks = []
+    if (schoolDetails.socialNetworks) {
+      try {
+        socialNetworks = typeof schoolDetails.socialNetworks === 'string'
+          ? JSON.parse(schoolDetails.socialNetworks)
+          : schoolDetails.socialNetworks
+      } catch (e) {
+        console.error('Ошибка при разборе социальных сетей:', e)
+      }
+    }
+    
+    // Приоритет данных: отдельные поля из БД имеют приоритет над данными из поля contacts
+    schoolForm.value = {
+      id: schoolDetails.id,
+      name: schoolDetails.name,
+      address: schoolDetails.address || '',
+      description: schoolDetails.description || '',
+      website: schoolDetails.website || '',
+      email: schoolDetails.email || '',
+      phone: schoolDetails.phoneNumber || '',
+      category: schoolDetails.category || '',
+      location: schoolDetails.coordinates || null,
+      logoUrl: schoolDetails.logoUrl || '',
+      // Фотографии
+      photos: Array.isArray(schoolDetails.photos) ? [...schoolDetails.photos] : [],
+      // Программы
+      programs: Array.isArray(schoolDetails.programs) ? schoolDetails.programs.map(program => ({
+        ...program,
+        examRequirements: Array.isArray(program.examRequirements) ? [...program.examRequirements] : []
+      })) : [],
+      // Структурированные контакты - приоритет у отдельных полей БД
+      contactPhones: additionalPhones.length > 0 ? additionalPhones : (contactData.phones || []),
+      fax: schoolDetails.faxNumber || contactData.fax || '',
+      messengers: messengers.length > 0 ? messengers : (contactData.messengers || []),
+      workingHours: schoolDetails.workingHours || contactData.workingHours || '',
+      socialNetworks: socialNetworks.length > 0 ? socialNetworks : (contactData.socialNetworks || []),
+      // Загружаем внешние отзывы
+      externalReviews: []
+    }
+    
+    // Загружаем отзывы из 2GIS для этой школы
+    const externalReviews = await loadExternalReviews(schoolDetails.id)
+    schoolForm.value.externalReviews = externalReviews
+    
+    console.log('Данные школы подготовлены для редактирования:', {
+      fax: schoolForm.value.fax,
+      messengers: schoolForm.value.messengers, 
+      workingHours: schoolForm.value.workingHours,
+      socialNetworks: schoolForm.value.socialNetworks
+    });
+    
+    openEditModal.value = true;
+  } catch (error) {
+    console.error('Ошибка при загрузке данных для редактирования:', error);
+    errorMessage.value = 'Не удалось загрузить данные для редактирования. Пожалуйста, попробуйте снова.';
+    clearMessages();
+  } finally {
+    isLoading.value = false;
   }
-  
-  schoolForm.value = {
-    id: school.id,
-    name: school.name,
-    address: school.address || '',
-    description: school.description || '',
-    website: school.websiteUrl || school.website || '',
-    email: school.email || '',
-    phone: school.phone || '',
-    category: school.category || '',
-    location: school.coordinates || null,
-    logoUrl: school.logoUrl || '',
-    // Фотографии
-    photos: Array.isArray(school.photos) ? [...school.photos] : [],
-    // Программы
-    programs: Array.isArray(school.programs) ? school.programs.map(program => ({
-      ...program,
-      examRequirements: Array.isArray(program.examRequirements) ? [...program.examRequirements] : []
-    })) : [],
-    // Структурированные контакты
-    contactPhones: contactData.phones || [],
-    fax: contactData.fax || '',
-    messengers: contactData.messengers || [],
-    workingHours: contactData.workingHours || '',
-    socialNetworks: contactData.socialNetworks || [],
-    // Пустой массив для внешних отзывов
-    externalUrl: '',
-    externalReviews: []
-  }
-  
-  openEditModal.value = true
 }
 
 // Обновление школы
@@ -1064,12 +1225,14 @@ async function updateSchool() {
       longitude: longitude,
       // Структурированная контактная информация
       contacts: JSON.stringify(contactsObject),
-      logoUrl: schoolForm.value.logoUrl || null
+      logoUrl: schoolForm.value.logoUrl || null,
+      // Добавляем фотографии
+      photos: schoolForm.value.photos || []
     }
 
     console.log('Отправка данных на сервер:', JSON.stringify(schoolData, null, 2));
 
-    // Отправляем запрос на сервер
+    // Отправляем запрос на сервер для обновления основной информации
     const response = await $fetch(`/api/schools/${schoolForm.value.id}/basic`, {
       method: 'PUT',
       headers: { 
@@ -1080,6 +1243,28 @@ async function updateSchool() {
     })
     
     console.log('Ответ от сервера:', response);
+    
+    // Обновляем статусы отзывов
+    if (schoolForm.value.externalReviews && schoolForm.value.externalReviews.length > 0) {
+      // Отслеживаем отзывы, которые нужно обновить
+      for (const review of schoolForm.value.externalReviews) {
+        if (review.id) {
+          try {
+            // Обновляем статус отзыва
+            await $fetch(`/api/external-reviews/update`, {
+              method: 'PUT',
+              headers: { 'Authorization': `Bearer ${token}` },
+              body: {
+                id: review.id,
+                isSelected: review.selected
+              }
+            })
+          } catch (error) {
+            console.error(`Ошибка при обновлении статуса отзыва ${review.id}:`, error)
+          }
+        }
+      }
+    }
     
     if (response) {
       // Обновление школы в списке
@@ -1258,8 +1443,7 @@ function resetForm() {
     messengers: [],
     workingHours: '',
     socialNetworks: [],
-    externalUrl: '',
-    externalReviews: []
+    externalReviews: [] // Обнуляем список отзывов
   }
 }
 
@@ -1332,98 +1516,118 @@ function removeExamRequirement(programIndex, examIndex) {
   schoolForm.value.programs[programIndex].examRequirements.splice(examIndex, 1)
 }
 
-// Добавим методы для работы с внешними отзывами
-async function fetchExternalReviews() {
-  if (!schoolForm.value.externalUrl || isImportingReviews.value) return
+// Функция для открытия модального окна добавления отзыва
+function addExternalReview() {
+  openAddReviewModal.value = true
+  reviewForm.value = {
+    authorName: '',
+    text: '',
+    rating: 5,
+    date: new Date().toISOString().substr(0, 10)
+  }
+}
+
+// Обновим функцию removeExternalReview для удаления из базы данных
+async function removeExternalReview(index) {
+  const review = schoolForm.value.externalReviews[index]
   
-  isImportingReviews.value = true
-  
-  try {
-    // Проверим, что URL содержит 2gis.ru
-    if (!schoolForm.value.externalUrl.includes('2gis.ru')) {
-      throw new Error('Указанный URL не является ссылкой на 2GIS')
-    }
+  // Если отзыв уже существует в базе данных (имеет ID)
+  if (review && review.id) {
+    const confirmed = confirm('Вы уверены, что хотите удалить этот отзыв?')
     
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigateTo('/login')
+    if (!confirmed) {
       return
     }
     
-    // Запрос на импорт отзывов
-    try {
-      const response = await $fetch('/api/external-reviews/2gis', {
+    const success = await deleteExternalReview(review.id)
+    
+    if (!success) {
+      errorMessage.value = 'Не удалось удалить отзыв. Пожалуйста, попробуйте позже.'
+      clearMessages()
+      return
+    }
+  }
+  
+  // Удаляем отзыв из локального списка
+  schoolForm.value.externalReviews.splice(index, 1)
+  
+  successMessage.value = 'Отзыв успешно удален'
+  clearMessages()
+}
+
+// Функция для отправки нового отзыва
+async function submitExternalReview() {
+  if (isSubmittingReview.value) return
+  
+  isSubmittingReview.value = true
+  try {
+    // Создаем новый отзыв для добавления в список
+    const newReview = {
+      authorName: reviewForm.value.authorName,
+      text: reviewForm.value.text,
+      rating: reviewForm.value.rating,
+      date: reviewForm.value.date ? new Date(reviewForm.value.date) : new Date(),
+      selected: true
+    }
+    
+    // Если мы редактируем существующую школу и у нее есть ID, 
+    // сразу сохраняем отзыв в базу через API
+    if (schoolForm.value.id) {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        navigateTo('/login')
+        return
+      }
+      
+      console.log('Отправка отзыва на сервер:', {
+        schoolId: schoolForm.value.id,
+        authorName: newReview.authorName,
+        text: newReview.text,
+        rating: newReview.rating,
+        date: newReview.date.toISOString(),
+        isSelected: newReview.selected
+      })
+      
+      const response = await $fetch('/api/external-reviews/add', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: {
-          url: schoolForm.value.externalUrl
+          schoolId: schoolForm.value.id,
+          authorName: newReview.authorName,
+          text: newReview.text,
+          rating: newReview.rating,
+          date: newReview.date.toISOString(), // Преобразуем дату в ISO формат
+          isSelected: newReview.selected
         }
-      });
+      })
       
-      // Добавляем поле selected к каждому отзыву
-      const reviews = response.body || [];
-      schoolForm.value.externalReviews = reviews.map(review => ({
-        ...review,
-        selected: true  // По умолчанию все отзывы выбраны
-      }));
-      
-      if (reviews.length === 0) {
-        successMessage.value = 'Отзывы не найдены. Проверьте URL или попробуйте позже.';
+      if (response && response.data) {
+        // Добавляем отзыв с ID из базы данных
+        schoolForm.value.externalReviews.push({
+          ...response.data,
+          selected: true
+        })
       } else {
-        successMessage.value = `Успешно импортировано ${reviews.length} отзывов.`;
+        // Если ответ не содержит данных, добавляем временный отзыв
+        schoolForm.value.externalReviews.push(newReview)
       }
-    } catch (fetchError) {
-      console.error('Ошибка запроса к API:', fetchError);
-      
-      // Генерируем демо-отзывы
-      const mockReviews = [
-        {
-          id: Date.now(),
-          text: "Отличное учебное заведение! Преподаватели очень квалифицированные и внимательные, материал объясняют доступно.",
-          rating: 5,
-          authorName: "Анна М.",
-          source: "2GIS",
-          date: new Date().toISOString(),
-          isExternal: true,
-          selected: true
-        },
-        {
-          id: Date.now() + 1,
-          text: "Хорошее место для обучения, но есть некоторые недостатки в организации учебного процесса.",
-          rating: 4,
-          authorName: "Павел К.",
-          source: "2GIS",
-          date: new Date().toISOString(),
-          isExternal: true,
-          selected: true
-        },
-        {
-          id: Date.now() + 2,
-          text: "Нормальное заведение, но ожидал большего. Учебная программа местами устаревшая.",
-          rating: 3,
-          authorName: "Михаил Д.",
-          source: "2GIS",
-          date: new Date().toISOString(),
-          isExternal: true,
-          selected: true
-        }
-      ];
-      
-      schoolForm.value.externalReviews = mockReviews;
-      successMessage.value = `Успешно импортировано ${mockReviews.length} отзывов.`;
-      clearMessages();
-      
-      // Не бросаем ошибку, чтобы не прерывать выполнение
-      return;
+    } else {
+      // Если школа новая, просто добавляем отзыв в список
+      schoolForm.value.externalReviews.push(newReview)
     }
     
-    clearMessages();
+    // Закрываем модальное окно
+    openAddReviewModal.value = false
+    
+    // Показываем сообщение об успехе
+    successMessage.value = 'Отзыв успешно добавлен'
+    clearMessages()
   } catch (error) {
-    console.error('Ошибка при импорте отзывов:', error);
-    errorMessage.value = error.message || 'Не удалось импортировать отзывы. Проверьте URL и попробуйте снова.';
-    clearMessages();
+    console.error('Ошибка при добавлении отзыва:', error)
+    errorMessage.value = error.message || 'Не удалось добавить отзыв. Пожалуйста, попробуйте позже.'
+    clearMessages()
   } finally {
-    isImportingReviews.value = false;
+    isSubmittingReview.value = false
   }
 }
 
@@ -1436,6 +1640,65 @@ function formatDate(dateString) {
     month: '2-digit',
     year: 'numeric'
   }).format(date)
+}
+
+// Добавим функцию для загрузки отзывов при редактировании школы
+async function loadExternalReviews(schoolId) {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return []
+    }
+    
+    console.log(`Загрузка отзывов для школы ID=${schoolId}`)
+    
+    try {
+      const response = await $fetch(`/api/external-reviews/list?schoolId=${schoolId}&admin=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (response && response.body) {
+        console.log(`Загружено отзывов: ${response.body.length}`)
+        // Добавляем selected ко всем отзывам
+        return response.body.map(review => ({
+          ...review,
+          selected: review.isSelected !== false // По умолчанию все отзывы выбраны
+        }))
+      }
+    } catch (fetchError) {
+      console.error('Ошибка при загрузке отзывов:', fetchError)
+      errorMessage.value = 'Не удалось загрузить отзывы. Будет показан пустой список.'
+      clearMessages()
+    }
+    
+    // В случае ошибки возвращаем пустой массив
+    return []
+  } catch (error) {
+    console.error('Общая ошибка при загрузке внешних отзывов:', error)
+    return []
+  }
+}
+
+// Добавим функцию для удаления отзыва из базы данных
+async function deleteExternalReview(reviewId) {
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return false
+    }
+    
+    await $fetch(`/api/external-reviews/delete?id=${reviewId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Ошибка при удалении отзыва:', error)
+    return false
+  }
 }
 
 // Проверка URL на наличие параметров
