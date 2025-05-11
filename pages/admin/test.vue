@@ -68,8 +68,10 @@
           </div>
           <p class="text-gray-800 font-medium">{{ question.question }}</p>
           <div class="mt-2 pl-4 space-y-1">
-            <div v-for="(option, index) in parseOptions(question.options)" :key="index" class="text-sm text-gray-700">
-              {{ option }}
+            <div v-for="(option, index) in parseOptions(question.options)" :key="index" 
+                 class="text-sm text-gray-700 flex items-center justify-between border-b border-gray-100 pb-1">
+              <span>{{ option.text }}</span>
+              <span class="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">Вес: {{ option.value }}</span>
             </div>
           </div>
         </div>
@@ -116,13 +118,25 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Варианты ответов</label>
             <div class="border border-gray-300 rounded-lg p-3">
               <div v-for="(option, index) in questionForm.options" :key="index" class="flex items-center gap-2 mb-2">
-                <input
-                  v-model="questionForm.options[index]"
-                  type="text"
-                  required
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
-                  placeholder="Вариант ответа"
-                />
+                <div class="flex-1 flex items-center gap-2">
+                  <input
+                    v-model="questionForm.options[index].text"
+                    type="text"
+                    required
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    placeholder="Текст варианта ответа"
+                  />
+                  <div class="flex items-center">
+                    <span class="text-xs text-gray-500 mr-1">Вес:</span>
+                    <input
+                      v-model.number="questionForm.options[index].value"
+                      type="number"
+                      min="1"
+                      max="10"
+                      class="w-16 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    />
+                  </div>
+                </div>
                 <button 
                   type="button"
                   @click="removeOption(index)"
@@ -141,14 +155,14 @@
                 + Добавить вариант ответа
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Минимум 2 варианта ответа</p>
+            <p class="text-xs text-gray-500 mt-1">Минимум 2 варианта ответа. Указывайте вес от 1 до 10 для каждого варианта.</p>
           </div>
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Веса результатов для ответов</label>
             <div class="border border-gray-300 rounded-lg p-3">
               <div v-for="(option, index) in questionForm.options" :key="index" class="mb-3">
-                <p class="text-sm font-medium mb-1">{{ option || `Вариант ${index + 1}` }}</p>
+                <p class="text-sm font-medium mb-1">{{ option.text || `Вариант ${index + 1}` }}</p>
                 <div class="flex flex-wrap gap-2">
                   <div v-for="result in questionForm.results" :key="result.id" class="flex items-center">
                     <label class="text-xs w-24 text-gray-700">{{ result.name }}:</label>
@@ -225,13 +239,25 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Варианты ответов</label>
             <div class="border border-gray-300 rounded-lg p-3">
               <div v-for="(option, index) in questionForm.options" :key="index" class="flex items-center gap-2 mb-2">
-                <input
-                  v-model="questionForm.options[index]"
-                  type="text"
-                  required
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
-                  placeholder="Вариант ответа"
-                />
+                <div class="flex-1 flex items-center gap-2">
+                  <input
+                    v-model="questionForm.options[index].text"
+                    type="text"
+                    required
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    placeholder="Текст варианта ответа"
+                  />
+                  <div class="flex items-center">
+                    <span class="text-xs text-gray-500 mr-1">Вес:</span>
+                    <input
+                      v-model.number="questionForm.options[index].value"
+                      type="number"
+                      min="1"
+                      max="10"
+                      class="w-16 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    />
+                  </div>
+                </div>
                 <button 
                   type="button"
                   @click="removeOption(index)"
@@ -250,14 +276,14 @@
                 + Добавить вариант ответа
               </button>
             </div>
-            <p class="text-xs text-gray-500 mt-1">Минимум 2 варианта ответа</p>
+            <p class="text-xs text-gray-500 mt-1">Минимум 2 варианта ответа. Указывайте вес от 1 до 10 для каждого варианта.</p>
           </div>
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Веса результатов для ответов</label>
             <div class="border border-gray-300 rounded-lg p-3">
               <div v-for="(option, index) in questionForm.options" :key="index" class="mb-3">
-                <p class="text-sm font-medium mb-1">{{ option || `Вариант ${index + 1}` }}</p>
+                <p class="text-sm font-medium mb-1">{{ option.text || `Вариант ${index + 1}` }}</p>
                 <div class="flex flex-wrap gap-2">
                   <div v-for="result in questionForm.results" :key="result.id" class="flex items-center">
                     <label class="text-xs w-24 text-gray-700">{{ result.name }}:</label>
@@ -356,7 +382,7 @@ const questionForm = reactive({
   question: '',
   category: '',
   customCategory: '',
-  options: ['', ''],
+  options: [{ text: '', value: 0 }],
   results: [...defaultResults],
   weights: []
 })
@@ -391,13 +417,45 @@ const searchQuestions = () => {
 
 // Функция для разбора строкового представления опций
 const parseOptions = (options) => {
-  if (!options) return []
-  if (Array.isArray(options)) return options
+  if (!options) return [{ text: '', value: 1 }, { text: '', value: 1 }]
+  
   try {
-    return JSON.parse(options)
+    // Если options - это массив объектов, возвращаем его
+    if (Array.isArray(options) && options.length > 0) {
+      if (typeof options[0] === 'object' && options[0] !== null && 'text' in options[0]) {
+        return options;
+      } else if (typeof options[0] === 'string') {
+        // Если массив строк, преобразуем в массив объектов
+        return options.map((text, index) => ({ text, value: index + 1 }));
+      }
+    }
+    
+    // Если options - строка, пробуем распарсить
+    if (typeof options === 'string') {
+      const parsed = JSON.parse(options);
+      
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) {
+          return [{ text: '', value: 1 }, { text: '', value: 1 }];
+        }
+        
+        // Если у нас массив объектов с text и value, используем его
+        if (typeof parsed[0] === 'object' && parsed[0] !== null && 'text' in parsed[0]) {
+          return parsed;
+        }
+        
+        // Если у нас массив строк, преобразуем в правильный формат
+        if (typeof parsed[0] === 'string') {
+          return parsed.map((text, index) => ({ text, value: index + 1 }));
+        }
+      }
+    }
+    
+    // По умолчанию возвращаем пустые варианты
+    return [{ text: '', value: 1 }, { text: '', value: 1 }];
   } catch (e) {
-    console.error('Ошибка при разборе опций', e)
-    return []
+    console.error('Ошибка при разборе опций', e);
+    return [{ text: '', value: 1 }, { text: '', value: 1 }];
   }
 }
 
@@ -407,7 +465,10 @@ const resetForm = () => {
   questionForm.question = ''
   questionForm.category = ''
   questionForm.customCategory = ''
-  questionForm.options = ['', '']
+  questionForm.options = [
+    { text: '', value: 1 },
+    { text: '', value: 1 }
+  ]
   initWeights()
 }
 
@@ -482,7 +543,7 @@ const editQuestion = (question) => {
   
   // Обрабатываем опции
   const options = parseOptions(question.options)
-  questionForm.options = Array.isArray(options) && options.length ? options : ['', '']
+  questionForm.options = options.map(option => ({ text: option.text, value: option.value }))
   
   // Инициализируем веса ответов 
   try {
@@ -519,7 +580,7 @@ const editQuestion = (question) => {
 
 // Добавление варианта ответа
 const addOption = () => {
-  questionForm.options.push('')
+  questionForm.options.push({ text: '', value: 1 })
   
   // Добавляем веса для нового варианта
   const newOptionWeights = {}
@@ -547,7 +608,7 @@ const updateQuestion = async () => {
     }
     
     // Проверка заполненности вариантов
-    if (questionForm.options.some(option => !option.trim())) {
+    if (questionForm.options.some(option => !option.text.trim())) {
       alert('Заполните все варианты ответов')
       return
     }
@@ -647,7 +708,7 @@ const addQuestion = async () => {
     }
     
     // Проверка заполненности вариантов
-    if (questionForm.options.some(option => !option.trim())) {
+    if (questionForm.options.some(option => !option.text.trim())) {
       alert('Заполните все варианты ответов')
       return
     }

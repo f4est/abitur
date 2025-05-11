@@ -221,12 +221,15 @@ const loadMapData = async () => {
   isLoading.value = true;
   mapInitialized.value = false;
   
+  console.log('SchoolMap: Получены координаты:', props.coordinates);
+  
   try {
     // Проверяем переданные координаты
     if (props.coordinates) {
       try {
         const [lat, lng] = props.coordinates.split(',').map(coord => parseFloat(coord.trim()));
         if (!isNaN(lat) && !isNaN(lng)) {
+          console.log('SchoolMap: Координаты успешно распарсены:', lat, lng);
           mapCoordinates.value = { lat, lng };
           hasMapData.value = true;
           await initializeMap(mapCoordinates.value);

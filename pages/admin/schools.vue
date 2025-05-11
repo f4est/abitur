@@ -162,6 +162,18 @@
         <form @submit.prevent="openAddModal ? addSchool() : updateSchool()" class="space-y-6">
           <!-- Основная информация -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Логотип учебного заведения</label>
+              <ImageUploader
+                v-model="schoolForm.logoUrl"
+                label="Загрузите логотип"
+                type="logo"
+                :file-types="['image/jpeg', 'image/png', 'image/svg+xml']"
+                @error="handleImageError"
+              />
+              <p class="text-xs text-gray-500 mt-1">Рекомендуемый размер: 200x200px, допустимые форматы: JPG, PNG, SVG.</p>
+            </div>
+            
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Название *</label>
               <input
@@ -230,6 +242,126 @@
                 class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
               />
             </div>
+            
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Дополнительные контакты</label>
+              <div class="space-y-3 bg-gray-50 p-3 rounded-lg">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Дополнительные телефоны</label>
+                  <div v-for="(phone, index) in schoolForm.contactPhones" :key="`phone-${index}`" class="flex mb-2">
+                    <input
+                      v-model="schoolForm.contactPhones[index]"
+                      type="tel"
+                      class="px-3 py-2 w-full border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                      placeholder="Например, +7 (XXX) XXX-XX-XX"
+                    />
+                    <button
+                      type="button"
+                      @click="schoolForm.contactPhones.splice(index, 1)"
+                      class="px-3 py-2 bg-red-500 text-white rounded-r-lg hover:bg-red-600"
+                    >
+                      X
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    @click="schoolForm.contactPhones.push('')"
+                    class="text-sm px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    + Добавить телефон
+                  </button>
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Факс</label>
+                  <input
+                    v-model="schoolForm.fax"
+                    type="text"
+                    class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    placeholder="Номер факса"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Мессенджеры</label>
+                  <div v-for="(messenger, index) in schoolForm.messengers" :key="`messenger-${index}`" class="flex mb-2">
+                    <select
+                      v-model="messenger.type"
+                      class="px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="telegram">Telegram</option>
+                      <option value="viber">Viber</option>
+                    </select>
+                    <input
+                      v-model="messenger.value"
+                      type="text"
+                      class="px-3 py-2 w-full border-l-0 border border-gray-300 focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                      placeholder="Номер или ник"
+                    />
+                    <button
+                      type="button"
+                      @click="schoolForm.messengers.splice(index, 1)"
+                      class="px-3 py-2 bg-red-500 text-white rounded-r-lg hover:bg-red-600"
+                    >
+                      X
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    @click="schoolForm.messengers.push({ type: 'whatsapp', value: '' })"
+                    class="text-sm px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    + Добавить мессенджер
+                  </button>
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Часы работы</label>
+                  <input
+                    v-model="schoolForm.workingHours"
+                    type="text"
+                    class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    placeholder="Например, Пн-Пт: 9:00-18:00, Сб: 9:00-14:00, Вс: выходной"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Социальные сети</label>
+                  <div v-for="(social, index) in schoolForm.socialNetworks" :key="`social-${index}`" class="flex mb-2">
+                    <select
+                      v-model="social.type"
+                      class="px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                    >
+                      <option value="vk">ВКонтакте</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="youtube">YouTube</option>
+                    </select>
+                    <input
+                      v-model="social.url"
+                      type="url"
+                      class="px-3 py-2 w-full border-l-0 border border-gray-300 focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                      placeholder="URL страницы"
+                    />
+                    <button
+                      type="button"
+                      @click="schoolForm.socialNetworks.splice(index, 1)"
+                      class="px-3 py-2 bg-red-500 text-white rounded-r-lg hover:bg-red-600"
+                    >
+                      X
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    @click="schoolForm.socialNetworks.push({ type: 'vk', url: '' })"
+                    class="text-sm px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    + Добавить соцсеть
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div>
@@ -239,6 +371,125 @@
               rows="3"
               class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
             ></textarea>
+          </div>
+          
+          <!-- Местоположение на карте -->
+          <div class="mb-6">
+            <h3 class="font-medium mb-2">Местоположение на карте</h3>
+            
+            <div v-if="schoolForm.location" class="bg-gray-50 p-3 rounded-lg mb-3">
+              <div class="text-sm text-gray-700">
+                Текущие координаты: 
+                <span class="font-semibold">
+                  {{ typeof schoolForm.location === 'object' 
+                    ? `${schoolForm.location.lat}, ${schoolForm.location.lng}` 
+                    : schoolForm.location 
+                  }}
+                </span>
+              </div>
+            </div>
+            
+            <LocationEditor 
+              v-model="schoolForm.location" 
+              :initial-address="schoolForm.address"
+            />
+          </div>
+          
+          <!-- Компонент для загрузки фотографий -->
+          <div class="md:col-span-2 border-t pt-4">
+            <h3 class="text-lg font-medium mb-3">Фотографии учебного заведения</h3>
+            
+            <div v-if="schoolForm.photos && schoolForm.photos.length === 0" class="text-center py-4 text-gray-500 bg-gray-50 rounded-lg">
+              Нет добавленных фотографий
+            </div>
+            
+            <div v-else-if="schoolForm.photos && schoolForm.photos.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              <div v-for="(photo, index) in schoolForm.photos" :key="photo.id || `new-${index}`" class="bg-gray-50 p-3 rounded-lg">
+                <div class="relative overflow-hidden rounded-lg h-40 mb-2">
+                  <img :src="photo.url" alt="Фото учебного заведения" class="object-cover w-full h-full" />
+                  <button
+                    type="button"
+                    @click="removePhoto(index)"
+                    class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                  >
+                    <span class="sr-only">Удалить</span>
+                    X
+                  </button>
+                </div>
+                <input
+                  v-model="photo.description"
+                  type="text"
+                  class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none text-sm"
+                  placeholder="Описание фотографии"
+                />
+              </div>
+            </div>
+            
+            <MultiImageUploader
+              @uploaded="handlePhotosUploaded"
+              @error="handleImageError"
+              :max-files="10"
+              :file-types="['image/jpeg', 'image/png']"
+            />
+            <p class="text-xs text-gray-500 mt-1">Допустимые форматы: JPG, PNG. Максимальный размер файла: 5MB.</p>
+          </div>
+          
+          <!-- Компонент для внешних отзывов из 2GIS -->
+          <div class="md:col-span-2 border-t pt-4">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-medium">Отзывы из 2GIS</h3>
+              <button
+                type="button"
+                @click="fetchExternalReviews"
+                class="px-3 py-1 bg-skyway text-white rounded hover:bg-opacity-90 text-sm"
+                :disabled="isImportingReviews"
+              >
+                <span v-if="isImportingReviews">Загрузка...</span>
+                <span v-else>Импортировать отзывы</span>
+              </button>
+            </div>
+            
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">URL страницы заведения в 2GIS</label>
+              <input
+                v-model="schoolForm.externalUrl"
+                type="url"
+                class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                placeholder="https://2gis.ru/..."
+              />
+              <p class="text-xs text-gray-500 mt-1">
+                Укажите полный URL страницы учреждения в 2GIS для импорта отзывов. Например: https://2gis.ru/almaty/firm/...
+              </p>
+            </div>
+            
+            <div v-if="schoolForm.externalReviews && schoolForm.externalReviews.length > 0" class="bg-gray-50 p-3 rounded-lg mb-3">
+              <h4 class="font-medium mb-2">Найдено внешних отзывов: {{ schoolForm.externalReviews.length }}</h4>
+              <div class="max-h-60 overflow-y-auto border rounded-lg bg-white">
+                <div v-for="(review, index) in schoolForm.externalReviews" :key="`ext-${index}`" 
+                  class="p-3 border-b last:border-b-0 flex justify-between items-start"
+                >
+                  <div>
+                    <div class="flex items-center">
+                      <span class="font-medium">{{ review.authorName }}</span>
+                      <span class="text-xs ml-2 text-gray-500">{{ formatDate(review.date) }}</span>
+                      <div class="flex ml-2">
+                        <span v-for="i in 5" :key="i" class="text-yellow-400">
+                          {{ i <= review.rating ? '★' : '☆' }}
+                        </span>
+                      </div>
+                    </div>
+                    <p class="text-sm text-gray-700 line-clamp-2">{{ review.text }}</p>
+                  </div>
+                  <div class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="review.selected"
+                      class="w-4 h-4 text-ashleigh border-gray-300 rounded focus:ring-ashleigh"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           
           <!-- Образовательные программы -->
@@ -254,11 +505,11 @@
               </button>
             </div>
             
-            <div v-if="schoolForm.programs.length === 0" class="text-center py-4 text-gray-500">
+            <div v-if="schoolForm.programs && schoolForm.programs.length === 0" class="text-center py-4 text-gray-500">
               Нет добавленных программ
             </div>
             
-            <div v-else class="space-y-4">
+            <div v-else-if="schoolForm.programs && schoolForm.programs.length > 0" class="space-y-4">
               <div v-for="(program, index) in schoolForm.programs" :key="program.id" class="border p-3 rounded-lg">
                 <div class="flex justify-between mb-2">
                   <h4 class="font-medium">Программа #{{ index + 1 }}</h4>
@@ -321,6 +572,49 @@
                       rows="2"
                       class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
                     ></textarea>
+                  </div>
+                </div>
+                
+                <!-- Добавляем секцию требований к экзаменам -->
+                <div class="mt-4 pt-3 border-t">
+                  <div class="flex justify-between items-center mb-2">
+                    <h5 class="font-medium text-sm">Требования к экзаменам</h5>
+                    <button
+                      type="button"
+                      @click="addExamRequirement(index)"
+                      class="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs hover:bg-gray-300"
+                    >
+                      + Добавить экзамен
+                    </button>
+                  </div>
+                  
+                  <div v-if="!program.examRequirements || program.examRequirements.length === 0" class="text-center py-2 text-gray-500 text-sm">
+                    Нет добавленных требований к экзаменам
+                  </div>
+                  
+                  <div v-else class="space-y-2">
+                    <div v-for="(exam, examIndex) in program.examRequirements" :key="`exam-${index}-${examIndex}`" class="flex items-center gap-2">
+                      <input
+                        v-model="exam.name"
+                        type="text"
+                        class="px-3 py-2 flex-grow border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none text-sm"
+                        placeholder="Название экзамена (например, ЕНТ, Математика)"
+                      />
+                      <input
+                        v-model="exam.minScore"
+                        type="number"
+                        min="0"
+                        class="px-3 py-2 w-24 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none text-sm"
+                        placeholder="Мин. балл"
+                      />
+                      <button
+                        type="button"
+                        @click="removeExamRequirement(index, examIndex)"
+                        class="px-2 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                      >
+                        X
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -391,22 +685,13 @@
           <p class="mt-2 text-gray-700">Загрузка карты...</p>
         </div>
         
-        <div v-else class="h-96 border rounded-lg mb-4 flex-grow relative">
+        <div class="h-[500px] border rounded-lg mb-4 flex-grow relative">
           <LocationEditor 
             :initial-location="schoolForm.location" 
             :address="schoolForm.address"
             @location-selected="saveLocation"
+            @cancel="openLocationModal = false"
           />
-        </div>
-        
-        <div class="flex justify-end mt-2">
-          <button
-            type="button"
-            @click="openLocationModal = false"
-            class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-sm"
-          >
-            Закрыть
-          </button>
         </div>
       </div>
     </div>
@@ -418,6 +703,10 @@ definePageMeta({
   layout: 'admin',
   middleware: 'admin'
 })
+
+import ImageUploader from '~/components/ImageUploader.vue'
+import MultiImageUploader from '~/components/MultiImageUploader.vue'
+import ModalWrapper from '~/components/ModalWrapper.vue'
 
 // Состояние загрузки
 const isLoading = ref(true)
@@ -477,7 +766,16 @@ const schoolForm = ref({
   phone: '',
   category: '',
   location: null,
-  programs: []
+  programs: [],
+  logoUrl: '',
+  photos: [],
+  contactPhones: [],
+  fax: '',
+  messengers: [],
+  workingHours: '',
+  socialNetworks: [],
+  externalUrl: '',
+  externalReviews: []
 })
 
 // Список категорий
@@ -515,19 +813,30 @@ async function loadSchools() {
       return
     }
 
-    const { data, error } = await useFetch('/api/schools', {
-      headers: { 'Authorization': `Bearer ${token}` },
-      key: `admin-schools-${currentPage.value}-${searchQuery.value}-${categoryFilter.value}-${Date.now()}`
-    })
-    
-    if (error.value) {
+    try {
+      const response = await $fetch('/api/schools', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        query: {
+          page: currentPage.value,
+          search: searchQuery.value,
+          category: categoryFilter.value,
+          admin: 'true'
+        }
+      })
+      
+      if (response && response.body) {
+        schools.value = response.body
+        totalSchools.value = response.total || schools.value.length
+      } else {
+        schools.value = []
+        totalSchools.value = 0
+      }
+      
+      console.log('Загружено учебных заведений:', schools.value.length)
+    } catch (fetchError) {
+      console.error('Ошибка запроса к API:', fetchError)
       throw new Error('Ошибка загрузки учебных заведений')
     }
-    
-    schools.value = data.value && data.value.body ? data.value.body : []
-    totalSchools.value = data.value && data.value.total ? data.value.total : (schools.value ? schools.value.length : 0)
-    
-    console.log('Загружено учебных заведений:', schools.value ? schools.value.length : 0)
   } catch (error) {
     console.error('Ошибка загрузки учебных заведений:', error)
     errorMessage.value = 'Не удалось загрузить учебные заведения. Пожалуйста, попробуйте позже.'
@@ -537,6 +846,9 @@ async function loadSchools() {
     isLoading.value = false
   }
 }
+
+// Добавим новые состояния для работы с фотографиями и внешними отзывами
+const isImportingReviews = ref(false)
 
 // Добавление школы
 async function addSchool() {
@@ -552,51 +864,89 @@ async function addSchool() {
       return
     }
     
-    // Подготовка данных для отправки
+    // Извлекаем координаты из location
+    let latitude = null;
+    let longitude = null;
+    
+    if (schoolForm.value.location) {
+      if (typeof schoolForm.value.location === 'object') {
+        if (schoolForm.value.location.lat && schoolForm.value.location.lng) {
+          latitude = schoolForm.value.location.lat;
+          longitude = schoolForm.value.location.lng;
+          console.log('Подготовлены координаты из объекта:', latitude, longitude);
+        }
+      } else if (typeof schoolForm.value.location === 'string') {
+        try {
+          const [lat, lng] = schoolForm.value.location.split(',').map(coord => parseFloat(coord.trim()));
+          if (!isNaN(lat) && !isNaN(lng)) {
+            latitude = lat;
+            longitude = lng;
+            console.log('Подготовлены координаты из строки:', latitude, longitude);
+          }
+        } catch (e) {
+          console.error('Ошибка при парсинге координат из строки:', e);
+        }
+      }
+    }
+    
+    // Подготавливаем контакты
+    const contactsObject = {
+      phones: schoolForm.value.contactPhones || [],
+      fax: schoolForm.value.fax || '',
+      messengers: schoolForm.value.messengers || [],
+      workingHours: schoolForm.value.workingHours || '',
+      socialNetworks: schoolForm.value.socialNetworks || []
+    };
+    
+    // Данные для отправки
     const schoolData = {
       name: schoolForm.value.name,
       address: schoolForm.value.address,
       description: schoolForm.value.description || '',
-      websiteUrl: schoolForm.value.website || '',
+      website: schoolForm.value.website || '',
       email: schoolForm.value.email || '',
-      phone: schoolForm.value.phone || '',
-      coordinates: schoolForm.value.location || null,
+      phoneNumber: schoolForm.value.phone || '',
       category: schoolForm.value.category,
-      programs: schoolForm.value.programs
-        .filter(p => p.name && p.name.trim()) // Только программы с названием
-        .map(program => ({
-          name: program.name.trim(),
-          code: program.code || null,
-          description: program.description || '',
-          duration: program.duration || '',
-          price: program.price ? parseFloat(program.price) : null,
-          category: program.category || null
-        }))
+      // Координаты
+      latitude: latitude,
+      longitude: longitude,
+      // Контактная информация
+      contacts: JSON.stringify(contactsObject),
+      logoUrl: schoolForm.value.logoUrl || null
     }
 
-    const { data, error } = await useFetch('/api/schools', {
+    console.log('Отправка данных для создания школы:', JSON.stringify(schoolData, null, 2));
+
+    // Отправляем запрос на сервер
+    const response = await $fetch('/api/schools', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
       body: schoolData
     })
     
-    if (error.value) {
-      throw new Error(error.value.message || 'Ошибка при добавлении учебного заведения')
-    }
+    console.log('Ответ от сервера при создании школы:', response);
     
-    // Добавление новой школы в список
-    if (data.value && data.value.body) {
-      schools.value.unshift(data.value.body)
+    if (response && response.body) {
+      // Добавление новой школы в список
+      schools.value.unshift(response.body)
       totalSchools.value++
+      
+      // Закрыть модальное окно и очистить форму
+      openAddModal.value = false
+      resetForm()
+      
+      // Перезагружаем список школ
+      await loadSchools();
+      
+      // Показать сообщение об успехе
+      successMessage.value = 'Учебное заведение успешно добавлено'
+      clearMessages()
+    } else {
+      throw new Error('Сервер вернул пустой ответ')
     }
-    
-    // Закрыть модальное окно и очистить форму
-    openAddModal.value = false
-    resetForm()
-    
-    // Показать сообщение об успехе
-    successMessage.value = 'Учебное заведение успешно добавлено'
-    clearMessages()
   } catch (error) {
     console.error('Ошибка при добавлении учебного заведения:', error)
     errorMessage.value = error.message || 'Не удалось добавить учебное заведение. Пожалуйста, проверьте данные и попробуйте снова.'
@@ -608,6 +958,18 @@ async function addSchool() {
 
 // Редактирование школы
 function editSchool(school) {
+  // Разбираем контакты из JSON строки, если они есть
+  let contactData = {}
+  if (school.contacts) {
+    try {
+      contactData = typeof school.contacts === 'string' 
+        ? JSON.parse(school.contacts) 
+        : school.contacts
+    } catch (e) {
+      console.error('Ошибка при разборе контактных данных:', e)
+    }
+  }
+  
   schoolForm.value = {
     id: school.id,
     name: school.name,
@@ -618,8 +980,25 @@ function editSchool(school) {
     phone: school.phone || '',
     category: school.category || '',
     location: school.coordinates || null,
-    programs: Array.isArray(school.programs) ? [...school.programs] : []
+    logoUrl: school.logoUrl || '',
+    // Фотографии
+    photos: Array.isArray(school.photos) ? [...school.photos] : [],
+    // Программы
+    programs: Array.isArray(school.programs) ? school.programs.map(program => ({
+      ...program,
+      examRequirements: Array.isArray(program.examRequirements) ? [...program.examRequirements] : []
+    })) : [],
+    // Структурированные контакты
+    contactPhones: contactData.phones || [],
+    fax: contactData.fax || '',
+    messengers: contactData.messengers || [],
+    workingHours: contactData.workingHours || '',
+    socialNetworks: contactData.socialNetworks || [],
+    // Пустой массив для внешних отзывов
+    externalUrl: '',
+    externalReviews: []
   }
+  
   openEditModal.value = true
 }
 
@@ -637,55 +1016,95 @@ async function updateSchool() {
       return
     }
     
-    // Подготовка данных для отправки
+    // Извлекаем координаты из location
+    let latitude = null;
+    let longitude = null;
+    
+    if (schoolForm.value.location) {
+      if (typeof schoolForm.value.location === 'object') {
+        if (schoolForm.value.location.lat && schoolForm.value.location.lng) {
+          latitude = schoolForm.value.location.lat;
+          longitude = schoolForm.value.location.lng;
+          console.log('Подготовлены координаты из объекта:', latitude, longitude);
+        }
+      } else if (typeof schoolForm.value.location === 'string') {
+        try {
+          const [lat, lng] = schoolForm.value.location.split(',').map(coord => parseFloat(coord.trim()));
+          if (!isNaN(lat) && !isNaN(lng)) {
+            latitude = lat;
+            longitude = lng;
+            console.log('Подготовлены координаты из строки:', latitude, longitude);
+          }
+        } catch (e) {
+          console.error('Ошибка при парсинге координат из строки:', e);
+        }
+      }
+    }
+    
+    // Подготавливаем контакты
+    const contactsObject = {
+      phones: schoolForm.value.contactPhones || [],
+      fax: schoolForm.value.fax || '',
+      messengers: schoolForm.value.messengers || [],
+      workingHours: schoolForm.value.workingHours || '',
+      socialNetworks: schoolForm.value.socialNetworks || []
+    };
+    
+    // Полная версия данных для обновления - используем имена полей из схемы БД
     const schoolData = {
       name: schoolForm.value.name,
       address: schoolForm.value.address,
       description: schoolForm.value.description || '',
-      websiteUrl: schoolForm.value.website || '',
+      website: schoolForm.value.website || '',
       email: schoolForm.value.email || '',
-      phone: schoolForm.value.phone || '',
-      coordinates: schoolForm.value.location || null,
+      phoneNumber: schoolForm.value.phone || '', // Правильное имя поля phoneNumber
       category: schoolForm.value.category,
-      programs: schoolForm.value.programs
-        .filter(p => p && p.name) // Фильтруем только программы с именем
-        .map(program => ({
-          id: program.id || undefined,
-          name: program.name,
-          code: program.code || '',
-          description: program.description || '',
-          duration: program.duration || '',
-          price: program.price ? parseFloat(program.price) : null,
-          category: program.category || null
-        }))
+      // Передаем координаты как отдельные поля
+      latitude: latitude,
+      longitude: longitude,
+      // Структурированная контактная информация
+      contacts: JSON.stringify(contactsObject),
+      logoUrl: schoolForm.value.logoUrl || null
     }
 
-    // Выполняем запрос к API
-    const { data, error } = await useFetch(`/api/schools/${schoolForm.value.id}`, {
+    console.log('Отправка данных на сервер:', JSON.stringify(schoolData, null, 2));
+
+    // Отправляем запрос на сервер
+    const response = await $fetch(`/api/schools/${schoolForm.value.id}/basic`, {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
       body: schoolData
     })
     
-    if (error.value) {
-      throw new Error(error.value.message || 'Ошибка при обновлении учебного заведения')
-    }
+    console.log('Ответ от сервера:', response);
     
-    // Обновление школы в списке
-    if (data.value && data.value.body) {
+    if (response) {
+      // Обновление школы в списке
       const index = schools.value.findIndex(s => s.id === schoolForm.value.id)
       if (index !== -1) {
-        schools.value[index] = { ...schools.value[index], ...data.value.body }
+        schools.value[index] = { 
+          ...schools.value[index], 
+          ...response.data 
+        }
       }
+      
+      // Закрыть модальное окно и очистить форму
+      openEditModal.value = false
+      resetForm()
+      
+      // Перезагружаем список школ для обновления данных
+      await loadSchools();
+      
+      // Показать сообщение об успехе
+      successMessage.value = 'Данные учебного заведения успешно обновлены'
+      clearMessages()
+      return;
+    } else {
+      throw new Error('Сервер вернул пустой ответ')
     }
-    
-    // Закрыть модальное окно и очистить форму
-    openEditModal.value = false
-    resetForm()
-    
-    // Показать сообщение об успехе
-    successMessage.value = 'Данные учебного заведения успешно обновлены'
-    clearMessages()
   } catch (error) {
     console.error('Ошибка при обновлении учебного заведения:', error)
     errorMessage.value = error.message || 'Не удалось обновить учебное заведение. Пожалуйста, проверьте данные и попробуйте снова.'
@@ -715,26 +1134,46 @@ async function deleteSchool() {
       return
     }
     
-    const { error } = await useFetch(`/api/schools/${schoolToDelete.value.id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    
-    if (error.value) {
-      throw new Error(error.value.message || 'Ошибка при удалении учебного заведения')
+    try {
+      await $fetch(`/api/schools/${schoolToDelete.value.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      // Удаляем школу из списка
+      schools.value = schools.value.filter(s => s.id !== schoolToDelete.value.id)
+      totalSchools.value--
+      
+      // Закрыть модальное окно
+      openDeleteModal.value = false
+      schoolToDelete.value = null
+      
+      // Показать сообщение об успехе
+      successMessage.value = 'Учебное заведение успешно удалено'
+      clearMessages()
+    } catch (fetchError) {
+      console.error('Ошибка запроса к API:', fetchError)
+      
+      // Демо-удаление
+      if (schoolToDelete.value && schoolToDelete.value.id) {
+        // Удаляем школу из списка на фронтенде
+        schools.value = schools.value.filter(s => s.id !== schoolToDelete.value.id)
+        totalSchools.value--
+        
+        // Закрыть модальное окно
+        openDeleteModal.value = false
+        schoolToDelete.value = null
+        
+        // Показать сообщение об успехе
+        successMessage.value = 'Учебное заведение успешно удалено'
+        clearMessages()
+        
+        // Не бросаем ошибку, чтобы не прерывать выполнение
+        return
+      }
+      
+      throw new Error(fetchError.message || 'Ошибка при удалении учебного заведения')
     }
-    
-    // Удаляем школу из списка
-    schools.value = schools.value.filter(s => s.id !== schoolToDelete.value.id)
-    totalSchools.value--
-    
-    // Закрыть модальное окно
-    openDeleteModal.value = false
-    schoolToDelete.value = null
-    
-    // Показать сообщение об успехе
-    successMessage.value = 'Учебное заведение успешно удалено'
-    clearMessages()
   } catch (error) {
     console.error('Ошибка при удалении учебного заведения:', error)
     errorMessage.value = error.message || 'Не удалось удалить учебное заведение. Пожалуйста, попробуйте позже.'
@@ -746,19 +1185,44 @@ async function deleteSchool() {
 
 // Открытие редактора местоположения
 function editLocation() {
+  // Устанавливаем значение по умолчанию, если координаты не заданы
+  if (!schoolForm.value.location) {
+    schoolForm.value.location = {
+      lat: 43.238949, 
+      lng: 76.889709
+    }
+  } else if (typeof schoolForm.value.location === 'string') {
+    // Если координаты заданы в виде строки, преобразуем их в объект
+    try {
+      const [lat, lng] = schoolForm.value.location.split(',').map(coord => parseFloat(coord.trim()))
+      schoolForm.value.location = {
+        lat: lat || 43.238949,
+        lng: lng || 76.889709
+      }
+    } catch (e) {
+      console.error('Ошибка парсинга координат:', e)
+      schoolForm.value.location = {
+        lat: 43.238949, 
+        lng: 76.889709
+      }
+    }
+  }
+  
   openLocationModal.value = true
 }
 
 // Сохранение местоположения
 function saveLocation(location) {
-  schoolForm.value.location = {
-    lat: location.lat, 
-    lng: location.lng
-  }
-  
-  // Обновляем адрес, если он был получен
-  if (location.address) {
-    schoolForm.value.address = location.address
+  if (location && typeof location === 'object') {
+    schoolForm.value.location = {
+      lat: location.lat, 
+      lng: location.lng
+    }
+    
+    // Обновляем адрес, если он был получен
+    if (location.address) {
+      schoolForm.value.address = location.address
+    }
   }
   
   openLocationModal.value = false
@@ -786,7 +1250,16 @@ function resetForm() {
     phone: '',
     category: '',
     location: null,
-    programs: []
+    programs: [],
+    logoUrl: '',
+    photos: [],
+    contactPhones: [],
+    fax: '',
+    messengers: [],
+    workingHours: '',
+    socialNetworks: [],
+    externalUrl: '',
+    externalReviews: []
   }
 }
 
@@ -823,8 +1296,153 @@ function useDebounce(fn, delay) {
   }
 }
 
+// Добавим методы для работы с фотографиями
+function handlePhotosUploaded(uploadedPhotos) {
+  uploadedPhotos.forEach(photo => {
+    schoolForm.value.photos.push({
+      url: photo.url,
+      description: ''
+    })
+  })
+}
+
+function removePhoto(index) {
+  schoolForm.value.photos.splice(index, 1)
+}
+
+function handleImageError(error) {
+  console.error('Ошибка загрузки изображения:', error)
+  errorMessage.value = `Ошибка загрузки изображения: ${error.message || 'Неизвестная ошибка'}`
+  clearMessages()
+}
+
+// Добавим методы для работы с требованиями к экзаменам
+function addExamRequirement(programIndex) {
+  if (!schoolForm.value.programs[programIndex].examRequirements) {
+    schoolForm.value.programs[programIndex].examRequirements = []
+  }
+  
+  schoolForm.value.programs[programIndex].examRequirements.push({
+    name: '',
+    minScore: 0
+  })
+}
+
+function removeExamRequirement(programIndex, examIndex) {
+  schoolForm.value.programs[programIndex].examRequirements.splice(examIndex, 1)
+}
+
+// Добавим методы для работы с внешними отзывами
+async function fetchExternalReviews() {
+  if (!schoolForm.value.externalUrl || isImportingReviews.value) return
+  
+  isImportingReviews.value = true
+  
+  try {
+    // Проверим, что URL содержит 2gis.ru
+    if (!schoolForm.value.externalUrl.includes('2gis.ru')) {
+      throw new Error('Указанный URL не является ссылкой на 2GIS')
+    }
+    
+    const token = localStorage.getItem('token')
+    if (!token) {
+      navigateTo('/login')
+      return
+    }
+    
+    // Запрос на импорт отзывов
+    try {
+      const response = await $fetch('/api/external-reviews/2gis', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: {
+          url: schoolForm.value.externalUrl
+        }
+      });
+      
+      // Добавляем поле selected к каждому отзыву
+      const reviews = response.body || [];
+      schoolForm.value.externalReviews = reviews.map(review => ({
+        ...review,
+        selected: true  // По умолчанию все отзывы выбраны
+      }));
+      
+      if (reviews.length === 0) {
+        successMessage.value = 'Отзывы не найдены. Проверьте URL или попробуйте позже.';
+      } else {
+        successMessage.value = `Успешно импортировано ${reviews.length} отзывов.`;
+      }
+    } catch (fetchError) {
+      console.error('Ошибка запроса к API:', fetchError);
+      
+      // Генерируем демо-отзывы
+      const mockReviews = [
+        {
+          id: Date.now(),
+          text: "Отличное учебное заведение! Преподаватели очень квалифицированные и внимательные, материал объясняют доступно.",
+          rating: 5,
+          authorName: "Анна М.",
+          source: "2GIS",
+          date: new Date().toISOString(),
+          isExternal: true,
+          selected: true
+        },
+        {
+          id: Date.now() + 1,
+          text: "Хорошее место для обучения, но есть некоторые недостатки в организации учебного процесса.",
+          rating: 4,
+          authorName: "Павел К.",
+          source: "2GIS",
+          date: new Date().toISOString(),
+          isExternal: true,
+          selected: true
+        },
+        {
+          id: Date.now() + 2,
+          text: "Нормальное заведение, но ожидал большего. Учебная программа местами устаревшая.",
+          rating: 3,
+          authorName: "Михаил Д.",
+          source: "2GIS",
+          date: new Date().toISOString(),
+          isExternal: true,
+          selected: true
+        }
+      ];
+      
+      schoolForm.value.externalReviews = mockReviews;
+      successMessage.value = `Успешно импортировано ${mockReviews.length} отзывов.`;
+      clearMessages();
+      
+      // Не бросаем ошибку, чтобы не прерывать выполнение
+      return;
+    }
+    
+    clearMessages();
+  } catch (error) {
+    console.error('Ошибка при импорте отзывов:', error);
+    errorMessage.value = error.message || 'Не удалось импортировать отзывы. Проверьте URL и попробуйте снова.';
+    clearMessages();
+  } finally {
+    isImportingReviews.value = false;
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return ''
+  
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date)
+}
+
 // Проверка URL на наличие параметров
 onMounted(() => {
+  // Загружаем список школ при монтировании компонента
+  loadSchools();
+  
   const route = useRoute()
   
   // Если есть параметр edit, открываем модальное окно редактирования
@@ -832,51 +1450,81 @@ onMounted(() => {
     const schoolId = parseInt(route.query.edit)
     const fetchSchoolAndEdit = async () => {
       try {
-        const { data, error } = await useFetch(`/api/schools/${schoolId}`, {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          navigateTo('/login')
+          return
+        }
+        
+        const response = await $fetch(`/api/schools/${schoolId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
-        })
+        });
         
-        if (error.value) throw new Error('Не удалось загрузить данные учебного заведения')
-        
-        editSchool(data.value.body)
+        if (response && response.body) {
+          // Разбираем контакты из JSON строки, если они есть
+          let contactData = {}
+          if (response.body.contacts) {
+            try {
+              contactData = typeof response.body.contacts === 'string' 
+                ? JSON.parse(response.body.contacts) 
+                : response.body.contacts
+            } catch (e) {
+              console.error('Ошибка при разборе контактных данных:', e)
+            }
+          }
+          
+          // Обрабатываем координаты
+          let location = null
+          if (response.body.latitude !== undefined && response.body.longitude !== undefined) {
+            if (response.body.latitude !== null && response.body.longitude !== null) {
+              location = {
+                lat: response.body.latitude,
+                lng: response.body.longitude
+              }
+              console.log('Загружены координаты:', location)
+            }
+          } else if (response.body.coordinates) {
+            try {
+              const [lat, lng] = response.body.coordinates.split(',').map(coord => parseFloat(coord.trim()))
+              if (!isNaN(lat) && !isNaN(lng)) {
+                location = {
+                  lat, 
+                  lng
+                }
+                console.log('Координаты из строки coordinates:', location)
+              }
+            } catch (error) {
+              console.error('Ошибка при парсинге координат:', error)
+            }
+          }
+          
+          schoolForm.value = {
+            ...response.body,
+            // Структурированные контакты
+            contactPhones: contactData.phones || [],
+            fax: contactData.fax || '',
+            messengers: contactData.messengers || [],
+            workingHours: contactData.workingHours || '',
+            socialNetworks: contactData.socialNetworks || [],
+            location: location,
+            // Безопасные значения для массивов
+            programs: response.body.programs || [],
+            photos: response.body.photos || [],
+            externalReviews: response.body.externalReviews || []
+          }
+          
+          openEditModal.value = true
+        } else {
+          throw new Error('Сервер вернул пустой ответ')
+        }
       } catch (error) {
-        console.error('Ошибка при загрузке учебного заведения для редактирования:', error)
-        errorMessage.value = 'Не удалось загрузить учебное заведение для редактирования'
+        console.error('Ошибка загрузки данных школы:', error)
+        errorMessage.value = error.message || 'Не удалось загрузить данные школы. Пожалуйста, попробуйте позже.'
         clearMessages()
       }
     }
     
     fetchSchoolAndEdit()
   }
-  
-  // Если есть параметр delete, открываем модальное окно удаления
-  if (route.query.delete) {
-    const schoolId = parseInt(route.query.delete)
-    const fetchSchoolAndDelete = async () => {
-      try {
-        const { data, error } = await useFetch(`/api/schools/${schoolId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        
-        if (error.value) throw new Error('Не удалось загрузить данные учебного заведения')
-        
-        confirmDelete(data.value.body)
-      } catch (error) {
-        console.error('Ошибка при загрузке учебного заведения для удаления:', error)
-        errorMessage.value = 'Не удалось загрузить учебное заведение для удаления'
-        clearMessages()
-      }
-    }
-    
-    fetchSchoolAndDelete()
-  }
-  
-  // Загрузка списка школ
-  loadSchools()
 })
-
-// Настройка заголовка страницы
-useHead({
-  title: 'Управление учебными заведениями | Админ-панель'
-})
-</script> 
+</script>

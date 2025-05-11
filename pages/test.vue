@@ -53,7 +53,7 @@
           </div>
           <div class="w-full h-2 bg-gray-200 rounded-full">
             <div 
-              class="h-full bg-ashleigh-blue rounded-full transition-all duration-300"
+              class="h-full bg-ashleigh rounded-full transition-all duration-300"
               :style="{ width: `${progress}%` }"
             ></div>
           </div>
@@ -68,10 +68,10 @@
               v-for="(option, index) in currentQuestionOptions" 
               :key="index"
               class="border rounded-lg p-4 cursor-pointer transition-colors"
-              :class="selectedOption === index ? 'border-ashleigh-blue bg-ashleigh-blue/10' : 'border-gray-200 hover:border-ashleigh-blue/50'"
+              :class="selectedOption === index ? 'border-ashleigh bg-ashleigh/10' : 'border-gray-200 hover:border-ashleigh/50'"
               @click="selectOption(index)"
             >
-              <label class="flex items-center cursor-pointer">
+              <label class="flex items-center cursor-pointer w-full">
                 <input 
                   type="radio" 
                   :name="'question-' + currentQuestionIndex"
@@ -79,9 +79,15 @@
                   v-model="selectedOption"
                   class="mr-3"
                 />
-                <span class="text-gray-800">{{ option.text }}</span>
+                <span v-if="option && option.text" class="text-gray-800">{{ option.text }}</span>
+                <span v-else class="text-gray-800">Вариант ответа {{ index + 1 }}</span>
               </label>
             </div>
+          </div>
+
+          <!-- Дебаг-информация для отладки - скрыта в продакшене -->
+          <div v-if="false" class="mt-4 p-4 bg-gray-100 rounded text-xs">
+            <pre>{{ JSON.stringify(currentQuestionOptions, null, 2) }}</pre>
           </div>
         </div>
         
@@ -149,19 +155,69 @@ const currentQuestion = computed(() => {
   return questions.value[currentQuestionIndex.value]
 })
 
-// Парсим варианты ответов текущего вопроса
-const currentQuestionOptions = computed(() => {
-  if (!currentQuestion.value) return []
+// Ручная обработка вариантов ответов
+const ensureOptionsFormat = (question) => {
+  if (!question) return [];
   
   try {
-    // Пытаемся распарсить JSON строку с вариантами ответов
-    return typeof currentQuestion.value.options === 'string' 
-      ? JSON.parse(currentQuestion.value.options) 
-      : currentQuestion.value.options
-  } catch (error) {
-    console.error('Ошибка парсинга вариантов ответов:', error)
-    return []
+    let opts = question.options;
+    
+    // Если options - строка, попытаемся распарсить
+    if (typeof opts === 'string') {
+      try {
+        opts = JSON.parse(opts);
+      } catch (e) {
+        console.error('Ошибка парсинга строки options:', e);
+        return [];
+      }
+    }
+    
+    // Проверяем, является ли результат массивом
+    if (!Array.isArray(opts)) {
+      console.error('options не является массивом:', opts);
+      return [];
+    }
+    
+    // Проверяем формат каждого варианта ответа
+    return opts.map((option, idx) => {
+      // Базовый объект ответа
+      const cleanOption = { value: idx + 1 };
+      
+      // Если option не является объектом, преобразуем его
+      if (typeof option !== 'object' || option === null) {
+        cleanOption.text = typeof option === 'string' ? option : `Вариант ${idx + 1}`;
+        return cleanOption;
+      }
+      
+      // Обрабатываем текст
+      if (typeof option.text === 'string') {
+        cleanOption.text = option.text;
+      } else {
+        // Проверяем на наличие числовых ключей (неправильный формат)
+        if (Object.keys(option).some(k => !isNaN(parseInt(k)))) {
+          cleanOption.text = `Вариант ${idx + 1}`;
+        } else {
+          cleanOption.text = `Вариант ${idx + 1}`;
+        }
+      }
+      
+      // Обрабатываем значение
+      if (typeof option.value === 'number') {
+        cleanOption.value = option.value;
+      }
+      
+      return cleanOption;
+    });
+  } catch (e) {
+    console.error('Ошибка обработки вариантов ответов:', e);
+    return [];
   }
+}
+
+// Парсим варианты ответов текущего вопроса
+const currentQuestionOptions = computed(() => {
+  if (!currentQuestion.value) return [];
+  return ensureOptionsFormat(currentQuestion.value);
 })
 
 // Загрузка вопросов
@@ -184,7 +240,20 @@ const loadQuestions = async () => {
     
     if (response.ok) {
       const data = await response.json()
-      questions.value = data.body || []
+      const receivedQuestions = data.body || []
+      
+      // Обрабатываем каждый вопрос, чтобы убедиться в правильности формата
+      questions.value = receivedQuestions.map(q => ({
+        ...q,
+        options: ensureOptionsFormat(q)
+      }))
+      
+      // Вывод в консоль для отладки структуры вопросов и ответов
+      console.log("Загруженные вопросы:", questions.value)
+      if (questions.value.length > 0) {
+        console.log("Первый вопрос:", questions.value[0].question)
+        console.log("Варианты ответов:", currentQuestionOptions.value)
+      }
       
       // Инициализация массива ответов
       answers.value = new Array(questions.value.length).fill(null)
@@ -262,16 +331,65 @@ const completeTest = async () => {
   // Формируем результаты теста
   const categories = {}
   
-  questions.value.forEach((question, index) => {
-    const category = question.category
-    const option = currentQuestionOptions.value[answers.value[index]]
+  // Для каждого вопроса
+  questions.value.forEach((question, qIndex) => {
+    const category = question.category || 'general'
+    const selectedOptionIndex = answers.value[qIndex]
     
+    // Пропускаем, если на вопрос не был дан ответ
+    if (selectedOptionIndex === null || selectedOptionIndex === undefined) {
+      return
+    }
+    
+    // Получаем опции текущего вопроса
+    const options = ensureOptionsFormat(question)
+    const selectedOption = options[selectedOptionIndex]
+    
+    // Инициализируем категорию, если она еще не определена
     if (!categories[category]) {
       categories[category] = 0
     }
     
-    categories[category] += option.value || 1
+    // Увеличиваем значение категории на основе выбранного варианта
+    if (selectedOption && typeof selectedOption.value === 'number') {
+      categories[category] += selectedOption.value
+    } else {
+      categories[category] += 1 // Если value не определено, используем 1
+    }
   })
+  
+  // Анализируем результаты и формируем рекомендации
+  let maxCategory = '';
+  let maxValue = 0;
+  
+  for (const [category, value] of Object.entries(categories)) {
+    if (value > maxValue) {
+      maxValue = value;
+      maxCategory = category;
+    }
+  }
+  
+  // Формируем рекомендации на основе наибольшей категории
+  let recommendations = '';
+  
+  switch (maxCategory) {
+    case 'Навыки':
+      recommendations = 'На основе ваших ответов, рекомендуем рассмотреть профессии, связанные с практическими навыками. Вам могут подойти технические специальности, инженерные направления или прикладные профессии.';
+      break;
+    case 'Интересы':
+      recommendations = 'Судя по вашим ответам, вы проявляете интерес к саморазвитию и исследованиям. Обратите внимание на научные направления, аналитические профессии или специальности, связанные с творческой реализацией.';
+      break;
+    case 'Карьера':
+      recommendations = 'Ваши ответы указывают на интерес к карьерному росту и достижениям. Рекомендуем рассмотреть управленческие специальности, бизнес-направления или профессии с четкой карьерной траекторией.';
+      break;
+    case 'Личность':
+      recommendations = 'Основываясь на ваших ответах, вам могут подойти профессии, связанные с межличностным взаимодействием. Обратите внимание на специальности в сфере психологии, социальной работы или образования.';
+      break;
+    default:
+      recommendations = 'На основе ваших ответов, рекомендуем обратить внимание на разнообразные специальности и направления. Для более точных рекомендаций, рассмотрите посещение профессионального консультанта по карьере.';
+  }
+  
+  console.log('Финальные результаты теста:', {categories, maxCategory, recommendations});
   
   try {
     const response = await fetch('/api/test-api/results', {
@@ -283,13 +401,44 @@ const completeTest = async () => {
       body: JSON.stringify({
         results: JSON.stringify({
           answers: answers.value,
-          categories
+          categories,
+          recommendations,
+          timestamp: new Date().toISOString()
         })
       })
     })
     
     if (!response.ok) {
       console.error('Ошибка сохранения результатов теста')
+    } else {
+      console.log('Результаты теста успешно сохранены')
+      
+      // Обновляем localStorage чтобы результаты сразу отобразились
+      try {
+        const userData = JSON.parse(localStorage.getItem('user') || '{}')
+        if (userData && userData.id) {
+          // Если нет массива результатов, создаем его
+          if (!userData.testResults) {
+            userData.testResults = []
+          }
+          
+          // Добавляем новый результат
+          userData.testResults.unshift({
+            id: Date.now(), // Временный ID до обновления страницы
+            results: JSON.stringify({
+              answers: answers.value,
+              categories,
+              recommendations
+            }),
+            createdAt: new Date().toISOString()
+          })
+          
+          // Обновляем в localStorage
+          localStorage.setItem('user', JSON.stringify(userData))
+        }
+      } catch (e) {
+        console.error('Ошибка обновления localStorage:', e)
+      }
     }
   } catch (error) {
     console.error('Ошибка сохранения результатов теста:', error)
@@ -301,4 +450,14 @@ const completeTest = async () => {
 useHead({
   title: 'Тест на профориентацию - Платформа для абитуриентов'
 })
-</script> 
+</script>
+
+<style scoped>
+.btn-primary {
+  @apply bg-ashleigh text-white hover:bg-ashleigh/80;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+}
+</style> 

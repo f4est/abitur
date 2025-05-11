@@ -111,11 +111,8 @@ export default defineEventHandler(async (event) => {
       const existingSchool = await prisma.school.findUnique({
         where: { id },
         include: {
-          programs: {
-            include: {
-              examRequirements: true
-            }
-          }
+          programs: true,
+          photos: true
         }
       })
       
@@ -130,29 +127,11 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event)
       
       // Извлекаем данные о программах для отдельной обработки
-      const { programs, email, phone, coordinates, ...restData } = body
-      
-      // Комбинируем email и phone в поле contacts
-      let contactsStr = '';
-      if (email) contactsStr += `Email: ${email}`;
-      if (email && phone) contactsStr += ', ';
-      if (phone) contactsStr += `Телефон: ${phone}`;
+      const { programs, photos, externalReviews, ...schoolData } = body
       
       // Обрабатываем координаты
-      let coordinatesStr = null;
-      if (coordinates) {
-        if (typeof coordinates === 'object' && coordinates.lat && coordinates.lng) {
-          coordinatesStr = `${coordinates.lat},${coordinates.lng}`;
-        } else if (typeof coordinates === 'string') {
-          coordinatesStr = coordinates;
-        }
-      }
-
-      // Формируем итоговый объект для обновления
-      const schoolData = {
-        ...restData,
-        contacts: contactsStr || existingSchool.contacts,
-        coordinates: coordinatesStr || existingSchool.coordinates
+      if (schoolData.coordinates && typeof schoolData.coordinates === 'object') {
+        schoolData.coordinates = `${schoolData.coordinates.lat},${schoolData.coordinates.lng}`
       }
       
       // Обновляем основные данные школы
@@ -161,20 +140,71 @@ export default defineEventHandler(async (event) => {
         data: schoolData
       })
       
+      // Если есть данные о фотографиях, обновляем их
+      if (Array.isArray(photos)) {
+        // Получаем существующие ID фотографий
+        const existingPhotoIds = existingSchool.photos.map(p => p.id).filter(Boolean)
+        
+        // Находим ID фотографий из запроса
+        const photoIdsToKeep = photos
+          .filter(p => p.id)
+          .map(p => p.id)
+        
+        // ID фотографий, которые нужно удалить
+        const photoIdsToDelete = existingPhotoIds.filter(id => !photoIdsToKeep.includes(id))
+        
+        // Удаляем фотографии, которых нет в запросе
+        if (photoIdsToDelete.length > 0) {
+          await prisma.schoolPhoto.deleteMany({
+            where: {
+              id: {
+                in: photoIdsToDelete
+              }
+            }
+          })
+        }
+        
+        // Обновляем существующие фотографии и добавляем новые
+        for (const photo of photos) {
+          if (photo.id) {
+            // Обновляем существующую фотографию
+            await prisma.schoolPhoto.update({
+              where: { id: photo.id },
+              data: {
+                url: photo.url,
+                description: photo.description || null
+              }
+            })
+          } else if (photo.url) {
+            // Создаем новую фотографию
+            await prisma.schoolPhoto.create({
+              data: {
+                url: photo.url,
+                description: photo.description || null,
+                schoolId: id
+              }
+            })
+          }
+        }
+      }
+      
       // Если есть данные о программах, обновляем их
       if (Array.isArray(programs)) {
         // Получаем существующие ID программ
-        const existingProgramIds = existingSchool.programs.map(p => p.id);
+        const existingProgramIds = existingSchool.programs.map(p => p.id)
         
         // Определяем какие программы нужно обновить, а какие создать
-        const programsToUpdate = programs.filter(p => p.id && existingProgramIds.includes(p.id));
-        const programsToCreate = programs.filter(p => !p.id || !existingProgramIds.includes(p.id));
+        const programsToUpdate = programs
+          .filter(p => p.id && existingProgramIds.includes(p.id))
+        
+        const programsToCreate = programs
+          .filter(p => !p.id || !existingProgramIds.includes(p.id))
         
         // ID программ, которые мы собираемся обновить
-        const programIdsToUpdate = programsToUpdate.map(p => p.id);
+        const programIdsToUpdate = programsToUpdate.map(p => p.id)
         
         // Программы, которые нужно удалить (те, что есть в базе, но нет в запросе)
-        const programIdsToDelete = existingProgramIds.filter(id => !programIdsToUpdate.includes(id));
+        const programIdsToDelete = existingProgramIds.filter(id => !programIdsToUpdate.includes(id))
         
         // Удаляем программы, которых нет в запросе
         if (programIdsToDelete.length > 0) {
@@ -184,63 +214,87 @@ export default defineEventHandler(async (event) => {
                 in: programIdsToDelete
               }
             }
-          });
+          })
         }
         
         // Обновляем существующие программы
         for (const program of programsToUpdate) {
-          const { examRequirements, ...programData } = program;
+          // Форматируем examRequirements в JSON-строку
+          let examRequirementsJson = null
+          if (program.examRequirements && Array.isArray(program.examRequirements)) {
+            examRequirementsJson = JSON.stringify(program.examRequirements)
+          }
           
           await prisma.educationalProgram.update({
             where: { id: program.id },
             data: {
-              ...programData,
-              examRequirements: {
-                deleteMany: {},
-                create: examRequirements?.map(req => ({
-                  name: req.name,
-                  minScore: req.minScore
-                })) || []
-              }
+              name: program.name,
+              code: program.code || null,
+              description: program.description || null,
+              duration: program.duration || null,
+              price: program.price ? parseFloat(program.price) : null,
+              category: program.category || null,
+              examRequirements: examRequirementsJson
             }
-          });
+          })
         }
         
         // Создаем новые программы
         for (const program of programsToCreate) {
-          const { examRequirements, ...programData } = program;
-          
-          if (programData.name && programData.name.trim()) {
+          if (program.name && program.name.trim()) {
+            // Форматируем examRequirements в JSON-строку
+            let examRequirementsJson = null
+            if (program.examRequirements && Array.isArray(program.examRequirements)) {
+              examRequirementsJson = JSON.stringify(program.examRequirements)
+            }
+            
             await prisma.educationalProgram.create({
               data: {
-                ...programData,
-                name: programData.name.trim(),
-                schoolId: id,
-                examRequirements: {
-                  create: examRequirements?.map(req => ({
-                    name: req.name,
-                    minScore: req.minScore
-                  })) || []
-                }
+                name: program.name.trim(),
+                code: program.code || null,
+                description: program.description || null,
+                duration: program.duration || null,
+                price: program.price ? parseFloat(program.price) : null,
+                category: program.category || null,
+                examRequirements: examRequirementsJson,
+                schoolId: id
               }
-            });
+            })
           }
         }
       }
       
-      // Получаем обновленные данные школы с программами
+      // Если есть данные о внешних отзывах, создаем их
+      if (Array.isArray(externalReviews) && externalReviews.length > 0) {
+        for (const review of externalReviews) {
+          await prisma.review.create({
+            data: {
+              text: review.text,
+              rating: review.rating,
+              authorName: review.authorName,
+              source: review.source || '2GIS',
+              isExternal: true,
+              isApproved: true, // Внешние отзывы автоматически одобряются
+              schoolId: id
+            }
+          })
+        }
+      }
+      
+      // Получаем обновленные данные школы
       const fullUpdatedSchool = await prisma.school.findUnique({
         where: { id },
         include: {
-          programs: {
-            include: {
-              examRequirements: true
-            }
-          },
+          programs: true,
           photos: true,
-          reviews: true
+          _count: {
+            select: {
+              reviews: true,
+              savedByUsers: true
+            }
+          }
         }
-      });
+      })
       
       return {
         statusCode: 200,

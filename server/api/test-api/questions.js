@@ -53,16 +53,84 @@ export default defineEventHandler(async (event) => {
       // Приводим JSON-строки к объектам JavaScript для удобства использования
       const formattedQuestions = questions.map(q => {
         try {
+          // Убедимся, что options это массив объектов
+          let parsedOptions = [];
+          
+          if (q.options) {
+            if (typeof q.options === 'string') {
+              try {
+                parsedOptions = JSON.parse(q.options);
+                
+                // Проверяем, является ли результат массивом
+                if (!Array.isArray(parsedOptions)) {
+                  console.error(`Ошибка формата options для вопроса ${q.id}: options не является массивом`);
+                  parsedOptions = [];
+                }
+              } catch (e) {
+                console.error(`Ошибка парсинга options для вопроса ${q.id}:`, e);
+              }
+            } else if (Array.isArray(q.options)) {
+              parsedOptions = q.options;
+            }
+          }
+          
+          // Проверяем, что у каждого варианта ответа есть правильная структура
+          parsedOptions = parsedOptions.map((opt, index) => {
+            // Если структура неправильная - создаем корректную
+            const properOption = { value: index + 1 };
+            
+            // Если есть поле text - используем его
+            if (opt && typeof opt.text === 'string') {
+              properOption.text = opt.text;
+            }
+            // Если text нет - проверяем, может быть передан просто строковый вариант
+            else if (typeof opt === 'string') {
+              properOption.text = opt;
+            }
+            // Если есть числовые ключи - это неправильная структура, берем "Вариант ответа" по умолчанию
+            else if (opt && Object.keys(opt).some(k => !isNaN(parseInt(k)))) {
+              properOption.text = `Вариант ответа ${index + 1}`;
+            }
+            // Запасной вариант
+            else {
+              properOption.text = `Вариант ответа ${index + 1}`;
+            }
+            
+            // Если есть поле value - используем его
+            if (opt && typeof opt.value === 'number') {
+              properOption.value = opt.value;
+            }
+            
+            return properOption;
+          });
+          
+          // Для weights применяем аналогичную логику
+          let parsedWeights = {};
+          if (q.weights) {
+            try {
+              parsedWeights = typeof q.weights === 'string' ? JSON.parse(q.weights) : q.weights;
+            } catch (e) {
+              console.error(`Ошибка парсинга weights для вопроса ${q.id}:`, e);
+            }
+          }
+          
           return {
             ...q,
-            options: q.options ? JSON.parse(q.options) : [],
-            weights: q.weights ? JSON.parse(q.weights) : {}
-          }
+            options: parsedOptions,
+            weights: parsedWeights
+          };
         } catch (e) {
           // Если произошла ошибка парсинга, возвращаем исходные строки
-          return q
+          console.error(`Ошибка обработки вопроса ${q.id}:`, e);
+          return q;
         }
-      })
+      });
+      
+      console.log('Отправка вопросов:', formattedQuestions.length);
+      // Для отладки выводим первый вопрос, если он есть
+      if (formattedQuestions.length > 0) {
+        console.log('Пример вопроса:', JSON.stringify(formattedQuestions[0], null, 2));
+      }
       
       return {
         statusCode: 200,
@@ -135,11 +203,29 @@ export default defineEventHandler(async (event) => {
         }
       }
       
+      // Подготавливаем варианты ответов
+      let optionsData = []
+      
+      if (Array.isArray(body.options)) {
+        // Если это массив строк, преобразуем их в объекты с текстом и значением
+        optionsData = body.options.map((opt, index) => {
+          if (typeof opt === 'string') {
+            return { text: opt, value: index + 1 }
+          } else if (typeof opt === 'object' && opt !== null) {
+            return { 
+              text: opt.text || `Вариант ${index + 1}`, 
+              value: typeof opt.value === 'number' ? opt.value : index + 1 
+            }
+          }
+          return { text: `Вариант ${index + 1}`, value: index + 1 }
+        })
+      }
+      
       // Подготавливаем данные для сохранения
       const data = {
         question: body.question,
         category: body.category,
-        options: Array.isArray(body.options) ? JSON.stringify(body.options) : '[]',
+        options: JSON.stringify(optionsData),
         weights: body.weights ? (typeof body.weights === 'string' ? body.weights : JSON.stringify(body.weights)) : '{}'
       }
       
@@ -153,7 +239,7 @@ export default defineEventHandler(async (event) => {
         const formattedQuestion = {
           ...question,
           options: JSON.parse(question.options),
-          weights: JSON.parse(question.weights)
+          weights: question.weights ? JSON.parse(question.weights) : {}
         }
         
         return {
@@ -208,9 +294,30 @@ export default defineEventHandler(async (event) => {
       
       if (body.question) updateData.question = body.question
       if (body.category) updateData.category = body.category
+      
+      // Обрабатываем варианты ответов
       if (body.options) {
-        updateData.options = Array.isArray(body.options) ? JSON.stringify(body.options) : body.options
+        if (Array.isArray(body.options)) {
+          // Преобразуем варианты ответов в нужный формат
+          const optionsData = body.options.map((opt, index) => {
+            if (typeof opt === 'string') {
+              return { text: opt, value: index + 1 }
+            } else if (typeof opt === 'object' && opt !== null) {
+              return { 
+                text: opt.text || `Вариант ${index + 1}`, 
+                value: typeof opt.value === 'number' ? opt.value : index + 1 
+              }
+            }
+            return { text: `Вариант ${index + 1}`, value: index + 1 }
+          })
+          
+          updateData.options = JSON.stringify(optionsData)
+        } else {
+          updateData.options = typeof body.options === 'string' ? body.options : JSON.stringify(body.options)
+        }
       }
+      
+      // Обрабатываем веса
       if (body.weights) {
         updateData.weights = typeof body.weights === 'string' ? body.weights : JSON.stringify(body.weights)
       }
@@ -225,7 +332,7 @@ export default defineEventHandler(async (event) => {
       try {
         const formattedQuestion = {
           ...updatedQuestion,
-          options: updatedQuestion.options ? JSON.parse(updatedQuestion.options) : [],
+          options: JSON.parse(updatedQuestion.options),
           weights: updatedQuestion.weights ? JSON.parse(updatedQuestion.weights) : {}
         }
         

@@ -55,16 +55,41 @@ export const useYandexMap = async () => {
    * @param {number} initialZoom - начальный уровень масштаба
    * @returns {Object} - объект карты
    */
-  const initMap = async (container, initialCoords = { lat: 55.7558, lng: 37.6173 }, initialZoom = 10) => {
+  const initMap = async (container, initialCoords = { lat: 43.238949, lng: 76.889709 }, initialZoom = 13) => {
     if (!container) {
       throw new Error('Не указан контейнер для карты');
     }
 
-    return new window.ymaps.Map(container, {
-      center: [initialCoords.lat, initialCoords.lng],
+    // Проверяем и устанавливаем начальные координаты
+    let coords = [43.238949, 76.889709]; // Координаты Алматы по умолчанию
+    
+    if (initialCoords) {
+      if (typeof initialCoords === 'object' && initialCoords.lat && initialCoords.lng) {
+        coords = [initialCoords.lat, initialCoords.lng];
+      } else if (typeof initialCoords === 'string') {
+        try {
+          const [lat, lng] = initialCoords.split(',').map(coord => parseFloat(coord.trim()));
+          if (!isNaN(lat) && !isNaN(lng)) {
+            coords = [lat, lng];
+          }
+        } catch (e) {
+          console.error('Ошибка при парсинге координат:', e);
+        }
+      }
+    }
+
+    // Создаем карту с улучшенными настройками
+    const map = new window.ymaps.Map(container, {
+      center: coords,
       zoom: initialZoom,
       controls: ['zoomControl', 'fullscreenControl', 'geolocationControl']
     });
+
+    // Настраиваем опции отображения
+    map.behaviors.enable('scrollZoom');
+    map.behaviors.enable('drag');
+
+    return map;
   };
 
   /**

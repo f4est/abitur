@@ -90,6 +90,12 @@ export default defineEventHandler(async (event) => {
       photos: normalizedPhotos
     };
     
+    // Добавляем поле coordinates на основе latitude и longitude
+    if (normalizedSchool.latitude !== null && normalizedSchool.longitude !== null) {
+      normalizedSchool.coordinates = `${normalizedSchool.latitude},${normalizedSchool.longitude}`;
+      console.log(`API schools/[id].get: Создано поле coordinates: ${normalizedSchool.coordinates}`);
+    }
+    
     return {
       body: normalizedSchool
     };

@@ -1,6 +1,7 @@
 import prisma from '../../utils/prisma'
 import path from 'path'
 import fs from 'fs'
+import { verifyToken } from '../../utils/auth'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -10,6 +11,31 @@ export default defineEventHandler(async (event) => {
     const page = parseInt(query.page) || 1
     const limit = parseInt(query.limit) || 100
     const offset = (page - 1) * limit
+    
+    // Проверка авторизации для админ-панели
+    const isAdminRequest = query.admin === 'true' || event.path.includes('/admin')
+    if (isAdminRequest) {
+      const user = verifyToken(event)
+      if (!user) {
+        console.log('API schools: Ошибка авторизации для админ-запроса')
+        setResponseStatus(event, 401)
+        return {
+          status: 401,
+          message: 'Требуется авторизация'
+        }
+      }
+      
+      if (user.role !== 'ADMIN') {
+        console.log('API schools: Недостаточно прав для админ-запроса')
+        setResponseStatus(event, 403)
+        return {
+          status: 403,
+          message: 'Доступ запрещен. Требуются права администратора.'
+        }
+      }
+      
+      console.log('API schools: Авторизованный запрос от администратора')
+    }
 
     // Выполняем запрос с поиском (если указан)
     const where = search 

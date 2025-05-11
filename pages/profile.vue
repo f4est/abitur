@@ -227,7 +227,11 @@
                 
                 <div v-if="parseTestResults(result.results)" class="mt-5">
                   <div class="space-y-4">
-                    <div v-for="(value, category) in parseTestResults(result.results).categories" :key="category" class="bg-gray-50 p-4 rounded-lg">
+                    <div 
+                      v-for="(value, category) in parseTestResults(result.results)?.categories" 
+                      :key="category" 
+                      class="bg-gray-50 p-4 rounded-lg"
+                    >
                       <div class="flex justify-between mb-2">
                         <span class="font-medium">{{ getCategoryName(category) }}</span>
                         <span class="font-bold text-ashleigh">{{ value }} баллов</span>
@@ -242,7 +246,7 @@
                     </div>
                   </div>
                   
-                  <div v-if="parseTestResults(result.results).recommendations" class="mt-6 p-4 bg-ashleigh/10 rounded-lg">
+                  <div v-if="parseTestResults(result.results)?.recommendations" class="mt-6 p-4 bg-ashleigh/10 rounded-lg">
                     <h4 class="font-medium mb-2 text-ashleigh flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -251,6 +255,18 @@
                     </h4>
                     <p>{{ parseTestResults(result.results).recommendations }}</p>
                   </div>
+                  
+                  <div class="flex justify-end mt-4">
+                    <NuxtLink to="/test" class="btn btn-secondary inline-flex items-center gap-2 text-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Пройти тест заново
+                    </NuxtLink>
+                  </div>
+                </div>
+                <div v-else class="bg-red-50 p-4 rounded-lg text-red-600">
+                  Ошибка при загрузке результатов теста. Попробуйте пройти тест заново.
                 </div>
               </div>
             </div>
@@ -588,7 +604,48 @@ const getInitials = (name) => {
 // Парсим результаты теста
 const parseTestResults = (resultsStr) => {
   try {
-    return typeof resultsStr === 'string' ? JSON.parse(resultsStr) : resultsStr
+    // Если строка, парсим JSON
+    let results = typeof resultsStr === 'string' ? JSON.parse(resultsStr) : resultsStr
+    
+    // Проверяем структуру данных
+    if (!results) return null
+    
+    // Если результаты внутри вложенного объекта (может быть в зависимости от API)
+    if (results.results && typeof results.results === 'string') {
+      results = JSON.parse(results.results)
+    }
+    
+    // Для старого формата может понадобиться дополнительное преобразование
+    if (results.categories) {
+      return {
+        categories: results.categories,
+        answers: results.answers || [],
+        recommendations: results.recommendations || ''
+      }
+    }
+    
+    // Если нет категорий, но есть ответы, создаем категории
+    if (results.answers && Array.isArray(results.answers)) {
+      const categoryCounts = {}
+      
+      // Просто подсчитываем количество ответов как пример
+      results.answers.forEach((answer, index) => {
+        const category = `Категория ${index % 5 + 1}`
+        if (!categoryCounts[category]) {
+          categoryCounts[category] = 0
+        }
+        categoryCounts[category] += (answer || 0) + 1
+      })
+      
+      return {
+        categories: categoryCounts,
+        answers: results.answers,
+        recommendations: 'Результаты основаны на ваших ответах в тесте профориентации.'
+      }
+    }
+    
+    // Если ничего не подходит, пробуем использовать как есть
+    return results
   } catch (error) {
     console.error('Ошибка парсинга результатов теста:', error)
     return null
@@ -651,6 +708,10 @@ const loadUserData = async () => {
           
           // Дополнительно запрашиваем свежие данные без ожидания (без await)
           fetchUserDataFromAPI(token)
+          
+          // Загружаем результаты тестов
+          loadTestResults(token)
+          
           isLoading.value = false
           return
         }
@@ -661,6 +722,9 @@ const loadUserData = async () => {
     
     // Если нет кэшированных данных или они некорректны, делаем запрос к API
     await fetchUserDataFromAPI(token)
+    
+    // Загружаем результаты тестов
+    await loadTestResults(token)
     
   } catch (error) {
     console.error('Ошибка загрузки данных пользователя:', error)
@@ -793,6 +857,38 @@ const handleImageUploaded = (result) => {
   // Автоматически обновляем аватар пользователя
   user.value.avatarUrl = result.url
   updateUserInLocalStorage(user.value)
+}
+
+// Загрузка результатов тестов профориентации
+const loadTestResults = async (token) => {
+  if (!token || !user.value) return
+  
+  try {
+    console.log('Загружаем результаты тестов...')
+    const response = await fetch('/api/test-api/results', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Ошибка API: ${response.status} ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    
+    if (data && data.body && Array.isArray(data.body)) {
+      console.log('Получены результаты тестов:', data.body.length)
+      user.value.testResults = data.body
+      
+      // Обновляем данные в localStorage
+      const updatedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      updatedUser.testResults = data.body
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+    }
+  } catch (error) {
+    console.error('Ошибка при загрузке результатов тестов:', error)
+  }
 }
 
 onMounted(() => {

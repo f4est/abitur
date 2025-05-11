@@ -75,7 +75,101 @@
             
             <div class="border-t pt-3 sm:pt-4">
               <h2 class="text-lg sm:text-xl font-semibold mb-2">Контакты</h2>
-              <p class="text-sm sm:text-base">{{ school.contacts }}</p>
+              
+              <!-- Структурированные контакты -->
+              <div class="space-y-3">
+                <!-- Основной телефон и email -->
+                <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                  <div v-if="school.phone" class="flex items-start">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span class="text-sm sm:text-base">{{ school.phone }}</span>
+                  </div>
+                  <div v-if="school.email" class="flex items-start">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span class="text-sm sm:text-base">{{ school.email }}</span>
+                  </div>
+                </div>
+                
+                <!-- Дополнительные телефоны -->
+                <div v-if="contactData.phones && contactData.phones.length > 0" class="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium mb-1">Дополнительные номера:</span>
+                    <div class="space-y-1">
+                      <div v-for="(phone, index) in contactData.phones" :key="`phone-${index}`" class="text-sm">
+                        {{ phone }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Факс -->
+                <div v-if="contactData.fax" class="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium">Факс:</span>
+                    <span class="text-sm">{{ contactData.fax }}</span>
+                  </div>
+                </div>
+                
+                <!-- Мессенджеры -->
+                <div v-if="contactData.messengers && contactData.messengers.length > 0" class="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium mb-1">Мессенджеры:</span>
+                    <div class="space-y-1">
+                      <div v-for="(messenger, index) in contactData.messengers" :key="`messenger-${index}`" class="text-sm flex items-center">
+                        <span class="mr-1">{{ getMessengerIcon(messenger.type) }}</span>
+                        <span>{{ messenger.value }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Часы работы -->
+                <div v-if="contactData.workingHours" class="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium">Часы работы:</span>
+                    <span class="text-sm">{{ contactData.workingHours }}</span>
+                  </div>
+                </div>
+                
+                <!-- Социальные сети -->
+                <div v-if="contactData.socialNetworks && contactData.socialNetworks.length > 0" class="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-ashleigh flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium mb-1">Социальные сети:</span>
+                    <div class="flex flex-wrap gap-2">
+                      <a 
+                        v-for="(social, index) in contactData.socialNetworks" 
+                        :key="`social-${index}`"
+                        :href="social.url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center"
+                      >
+                        <span class="mr-1">{{ getSocialIcon(social.type) }}</span>
+                        <span>{{ getSocialName(social.type) }}</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -226,11 +320,25 @@
                   {{ program.price ? `${program.price.toLocaleString()} ₸` : 'По запросу' }}
                 </td>
                 <td class="px-2 sm:px-6 py-2 sm:py-4 text-sm text-gray-500 hidden md:table-cell">
-                  <ul v-if="program.examRequirements && program.examRequirements.length > 0" class="list-disc pl-5">
-                    <li v-for="exam in program.examRequirements" :key="exam.id">
-                      {{ exam.examName }} {{ exam.minScore ? `(от ${exam.minScore} баллов)` : '' }}
-                    </li>
-                  </ul>
+                  <div v-if="hasExamRequirements(program)" class="mt-4 border-t pt-3">
+                    <h4 class="text-sm font-semibold mb-2">Требования к экзаменам:</h4>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full text-sm">
+                        <thead>
+                          <tr class="border-b bg-gray-50">
+                            <th class="py-2 px-3 text-left">Экзамен</th>
+                            <th class="py-2 px-3 text-right">Минимальный балл</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(exam, examIndex) in parseExamRequirements(program)" :key="`exam-${program.id}-${examIndex}`" class="border-b">
+                            <td class="py-2 px-3">{{ exam.name }}</td>
+                            <td class="py-2 px-3 text-right">{{ exam.minScore }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                   <span v-else>—</span>
                 </td>
               </tr>
@@ -506,6 +614,84 @@ const loadYandexMapsApi = () => {
   document.head.appendChild(script);
 }
 
+// Парсинг структурированных контактов
+const contactData = computed(() => {
+  if (!school.value || !school.value.contacts) return {}
+  
+  try {
+    const contactsData = typeof school.value.contacts === 'string' 
+      ? JSON.parse(school.value.contacts)
+      : school.value.contacts
+    
+    return {
+      phones: contactsData.phones || [],
+      fax: contactsData.fax || '',
+      messengers: contactsData.messengers || [],
+      workingHours: contactsData.workingHours || '',
+      socialNetworks: contactsData.socialNetworks || []
+    }
+  } catch (error) {
+    console.error('Ошибка при разборе контактных данных:', error)
+    return {}
+  }
+})
+
+// Получение иконки для мессенджера
+const getMessengerIcon = (type) => {
+  switch (type) {
+    case 'whatsapp': return '📱 WhatsApp:'
+    case 'telegram': return '📨 Telegram:'
+    case 'viber': return '📞 Viber:'
+    default: return '📱'
+  }
+}
+
+// Получение иконки для социальной сети
+const getSocialIcon = (type) => {
+  switch (type) {
+    case 'vk': return '💬'
+    case 'instagram': return '📷'
+    case 'facebook': return '👍'
+    case 'youtube': return '📺'
+    default: return '🔗'
+  }
+}
+
+// Получение названия социальной сети
+const getSocialName = (type) => {
+  switch (type) {
+    case 'vk': return 'ВКонтакте'
+    case 'instagram': return 'Instagram'
+    case 'facebook': return 'Facebook'
+    case 'youtube': return 'YouTube'
+    default: return type
+  }
+}
+
+// Проверяет, есть ли требования к экзаменам
+const hasExamRequirements = (program) => {
+  return program.examRequirements && 
+        (typeof program.examRequirements === 'string' ? 
+          program.examRequirements.length > 0 : 
+          program.examRequirements.length > 0);
+}
+
+// Парсит JSON-строку требований к экзаменам
+const parseExamRequirements = (program) => {
+  if (!program.examRequirements) return [];
+  
+  if (typeof program.examRequirements === 'string') {
+    try {
+      return JSON.parse(program.examRequirements);
+    } catch (e) {
+      console.error('Ошибка при парсинге требований к экзаменам:', e);
+      return [];
+    }
+  }
+  
+  return program.examRequirements;
+}
+
 // Основной метод загрузки данных
 onMounted(async () => {
   // Загрузка токена из localStorage
@@ -525,6 +711,10 @@ onMounted(async () => {
     const data = await response.json()
     if (data && data.body) {
       school.value = data.body
+      
+      // Вывод информации о координатах для отладки
+      console.log('Catalog/[id]: Загружены данные о школе. Coordinates:', school.value.coordinates, 
+                  'Latitude:', school.value.latitude, 'Longitude:', school.value.longitude)
       
       // Загрузка данных пользователя, если есть токен
       if (token.value) {

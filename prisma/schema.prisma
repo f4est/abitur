@@ -28,33 +28,58 @@ model User {
 }
 
 model School {
-  id            Int       @id @default(autoincrement())
-  name          String
-  description   String?
-  address       String
-  coordinates   String?
-  logoUrl       String?
-  websiteUrl    String?
-  contacts      String?
-  category      String?   // Тип учебного заведения (университет, колледж и т.д.)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                  Int       @id @default(autoincrement())
+  name                String
+  shortDescription    String?   // Краткое описание для списка
+  description         String?   // Полное описание
+  address             String
+  city                String?   // Город
+  phoneNumber         String?   // Основной телефон
+  email               String?   // Контактный email
+  website             String?   // Веб-сайт учебного заведения
+  logoUrl             String?   // URL логотипа учебного заведения
+  category            String?   // Категория учебного заведения (college, university и т.д.)
+  
+  // Дополнительные контактные данные
+  additionalPhones    String?   // JSON массив с дополнительными телефонами
+  faxNumber           String?   // Номер факса
+  messengers          String?   // JSON объект с мессенджерами {telegram: "@username", whatsapp: "+7123456789", ...}
+  workingHours        String?   // JSON объект с расписанием работы
+  socialNetworks      String?   // JSON объект со ссылками на соцсети
+  contacts            String?   // JSON строка со структурированными контактами
+  
+  // Геолокация
+  latitude            Float?    // Широта для карты
+  longitude           Float?    // Долгота для карты
+  
+  // Отзывы из внешних источников
+  externalReviewsUrl  String?   // URL страницы с отзывами (например, 2GIS)
+  externalReviewsSource String?  // Источник отзывов (например, "2GIS")
+  externalReviewsId   String?   // ID организации во внешнем источнике
+  
+  // Контент
+  images              String?   // JSON массив с URL изображений
+  educationalPrograms String?   // JSON массив с образовательными программами
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   // Связи
-  photos        SchoolPhoto[]
-  programs      EducationalProgram[]
-  savedByUsers  SavedSchool[]
-  reviews       Review[]
+  photos              SchoolPhoto[]
+  programs            EducationalProgram[]
+  savedByUsers        SavedSchool[]
+  reviews             Review[]
 
   @@map("School")
 }
 
 model SchoolPhoto {
-  id        Int      @id @default(autoincrement())
-  url       String
-  schoolId  Int
-  createdAt DateTime @default(now())
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  url         String   // URL фотографии
+  description String?  // Описание фотографии
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 
   @@map("SchoolPhoto")
 }
@@ -62,35 +87,26 @@ model SchoolPhoto {
 model EducationalProgram {
   id          Int      @id @default(autoincrement())
   name        String
-  code        String?  // Код направления
+  code        String?  // Код специальности
   description String?
-  duration    String?  // Срок обучения
+  duration    String?  // Например, "4 года", "5 лет"
   price       Float?   // Стоимость обучения
+  category    String?  // Например, "Бакалавриат", "Магистратура", "Специалитет"
   schoolId    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  examRequirements ExamRequirement[]
+  examRequirements String?  // JSON строка с требованиями к экзаменам
 
   @@map("EducationalProgram")
-}
-
-model ExamRequirement {
-  id          Int      @id @default(autoincrement())
-  name        String   // Название экзамена
-  minScore    Int      // Минимальный балл
-  programId   Int
-  program     EducationalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-
-  @@map("ExamRequirement")
 }
 
 model TestQuestion {
   id          Int     @id @default(autoincrement())
   question    String
-  options     String  // JSON строка с вариантами ответов
+  options     String  // JSON-строка с вариантами ответов в формате [{text: "Текст ответа", value: 5}, ...]
   category    String
-  weights     String? // JSON строка с весами для результатов по вариантам ответов
+  weights     String? // JSON-строка с весами для результатов по вариантам ответов
 }
 
 model TestResult {
@@ -114,16 +130,16 @@ model SavedSchool {
 model Review {
   id          Int      @id @default(autoincrement())
   text        String
-  rating      Float
-  authorName  String
-  source      String?  // Источник отзыва (2GIS и т.д.)
-  isExternal  Boolean  @default(false)
-  isApproved  Boolean  @default(false)
+  rating      Int
+  authorName  String?  // Имя автора для внешних отзывов
+  source      String?  // Например, "2GIS", "Наш сайт"
+  isExternal  Boolean  @default(false)  // Индикатор внешнего отзыва
+  isApproved  Boolean  @default(false)  // Модерация отзывов
   schoolId    Int
-  userId      Int
+  userId      Int?
   createdAt   DateTime @default(now())
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("Review")
 }
