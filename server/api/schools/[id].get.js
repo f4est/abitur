@@ -30,6 +30,25 @@ export default defineEventHandler(async (event) => {
       });
     }
     
+    // Обрабатываем examRequirements в программах, конвертируя JSON-строки в объекты
+    if (school.programs && school.programs.length > 0) {
+      school.programs = school.programs.map(program => {
+        if (program.examRequirements) {
+          try {
+            program.examRequirements = typeof program.examRequirements === 'string'
+              ? JSON.parse(program.examRequirements)
+              : program.examRequirements;
+          } catch (e) {
+            console.error(`Ошибка при разборе examRequirements для программы ${program.id}:`, e);
+            program.examRequirements = [];
+          }
+        } else {
+          program.examRequirements = [];
+        }
+        return program;
+      });
+    }
+    
     // Проверяем URL логотипа
     let logoUrl = school.logoUrl;
     

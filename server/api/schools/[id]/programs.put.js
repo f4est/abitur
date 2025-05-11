@@ -61,22 +61,80 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Обновляем информацию о программах школы
-    // В этом примере мы просто сохраняем весь массив программ
-    const updatedSchool = await prisma.school.update({
-      where: { id: schoolId },
-      data: {
-        educationalPrograms: body.programs
-      }
+    // Получаем текущие программы школы
+    const currentPrograms = await prisma.educationalProgram.findMany({
+      where: { schoolId: schoolId }
     })
     
-    console.log(`API schools/[id]/programs: Программы успешно обновлены для школы: ${updatedSchool.id}`)
+    // Обрабатываем каждую программу из запроса
+    const processedPrograms = [];
+    
+    for (const program of body.programs) {
+      // Проверяем наличие обязательных полей
+      if (!program.name) {
+        console.log('API schools/[id]/programs: Отсутствует обязательное поле name')
+        continue; // Пропускаем программы без названия
+      }
+      
+      // Подготавливаем данные для обновления или создания
+      const programData = {
+        name: program.name,
+        description: program.description || null,
+        code: program.code || null,
+        duration: program.duration || null,
+        price: program.price ? parseFloat(program.price) : null,
+        category: program.category || null,
+        schoolId: schoolId
+      }
+      
+      // Если есть требования к экзаменам, сохраняем их в JSON
+      if (program.examRequirements && Array.isArray(program.examRequirements)) {
+        programData.examRequirements = JSON.stringify(program.examRequirements)
+      }
+      
+      // Если программа уже существует, обновляем её
+      if (program.id) {
+        const programId = parseInt(program.id)
+        try {
+          const updatedProgram = await prisma.educationalProgram.update({
+            where: { 
+              id: programId,
+              schoolId: schoolId // Проверяем, что программа принадлежит этой школе
+            },
+            data: programData
+          })
+          processedPrograms.push(updatedProgram)
+          console.log(`API schools/[id]/programs: Обновлена программа ID ${programId}`)
+        } catch (error) {
+          console.error(`API schools/[id]/programs: Ошибка обновления программы ID ${programId}:`, error)
+        }
+      }
+      // Иначе создаем новую программу
+      else {
+        try {
+          const newProgram = await prisma.educationalProgram.create({
+            data: programData
+          })
+          processedPrograms.push(newProgram)
+          console.log(`API schools/[id]/programs: Создана новая программа ID ${newProgram.id}`)
+        } catch (error) {
+          console.error(`API schools/[id]/programs: Ошибка создания программы:`, error)
+        }
+      }
+    }
+    
+    // Получаем обновленный список программ
+    const updatedPrograms = await prisma.educationalProgram.findMany({
+      where: { schoolId: schoolId }
+    })
+    
+    console.log(`API schools/[id]/programs: Программы успешно обновлены для школы ID ${schoolId}. Всего программ: ${updatedPrograms.length}`)
     
     return {
       message: 'Образовательные программы успешно обновлены',
       data: {
-        schoolId: updatedSchool.id,
-        programs: updatedSchool.educationalPrograms
+        schoolId: schoolId,
+        programs: updatedPrograms
       }
     }
   } catch (error) {

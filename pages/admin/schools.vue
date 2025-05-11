@@ -526,6 +526,16 @@
                   </div>
                   
                   <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Код программы</label>
+                    <input
+                      v-model="program.code"
+                      type="text"
+                      class="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-ashleigh focus:border-ashleigh outline-none"
+                      placeholder="Например, 5B060200"
+                    />
+                  </div>
+                  
+                  <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Категория</label>
                     <select
                       v-model="program.category"
@@ -1128,10 +1138,13 @@ async function editSchool(school) {
       // Фотографии
       photos: Array.isArray(schoolDetails.photos) ? [...schoolDetails.photos] : [],
       // Программы
-      programs: Array.isArray(schoolDetails.programs) ? schoolDetails.programs.map(program => ({
-        ...program,
-        examRequirements: Array.isArray(program.examRequirements) ? [...program.examRequirements] : []
-      })) : [],
+      programs: Array.isArray(schoolDetails.programs) ? schoolDetails.programs.map(program => {
+        console.log(`Обработка программы ID ${program.id}, examRequirements:`, program.examRequirements);
+        return {
+          ...program,
+          examRequirements: program.examRequirements ? program.examRequirements : []
+        };
+      }) : [],
       // Структурированные контакты - приоритет у отдельных полей БД
       contactPhones: additionalPhones.length > 0 ? additionalPhones : (contactData.phones || []),
       fax: schoolDetails.faxNumber || contactData.fax || '',
@@ -1197,42 +1210,46 @@ async function updateSchool() {
             console.log('Подготовлены координаты из строки:', latitude, longitude);
           }
         } catch (e) {
-          console.error('Ошибка при парсинге координат из строки:', e);
+          console.error('Ошибка при парсинге координат:', e);
         }
       }
     }
     
-    // Подготавливаем контакты
-    const contactsObject = {
-      phones: schoolForm.value.contactPhones || [],
-      fax: schoolForm.value.fax || '',
-      messengers: schoolForm.value.messengers || [],
-      workingHours: schoolForm.value.workingHours || '',
-      socialNetworks: schoolForm.value.socialNetworks || []
-    };
+    // Строим объект контактов
+    const contactsObj = {
+      phones: schoolForm.value.contactPhones,
+      fax: schoolForm.value.fax,
+      messengers: schoolForm.value.messengers,
+      workingHours: schoolForm.value.workingHours,
+      socialNetworks: schoolForm.value.socialNetworks
+    }
     
-    // Полная версия данных для обновления - используем имена полей из схемы БД
+    // Подготавливаем данные для обновления
     const schoolData = {
       name: schoolForm.value.name,
       address: schoolForm.value.address,
-      description: schoolForm.value.description || '',
-      website: schoolForm.value.website || '',
-      email: schoolForm.value.email || '',
-      phoneNumber: schoolForm.value.phone || '', // Правильное имя поля phoneNumber
+      description: schoolForm.value.description,
+      website: schoolForm.value.website,
+      email: schoolForm.value.email,
+      phoneNumber: schoolForm.value.phone,
       category: schoolForm.value.category,
-      // Передаем координаты как отдельные поля
       latitude: latitude,
       longitude: longitude,
-      // Структурированная контактная информация
-      contacts: JSON.stringify(contactsObject),
-      logoUrl: schoolForm.value.logoUrl || null,
-      // Добавляем фотографии
-      photos: schoolForm.value.photos || []
+      contacts: JSON.stringify(contactsObj),
+      // Поля, которые должны быть в формате JSON-строки
+      additionalPhones: JSON.stringify(schoolForm.value.contactPhones),
+      faxNumber: schoolForm.value.fax,
+      messengers: JSON.stringify(schoolForm.value.messengers),
+      workingHours: schoolForm.value.workingHours,
+      socialNetworks: JSON.stringify(schoolForm.value.socialNetworks),
+      // Фотографии школы
+      photos: schoolForm.value.photos,
+      logoUrl: schoolForm.value.logoUrl
     }
-
-    console.log('Отправка данных на сервер:', JSON.stringify(schoolData, null, 2));
-
-    // Отправляем запрос на сервер для обновления основной информации
+    
+    console.log('Отправка данных на сервер:', schoolData);
+    
+    // Сначала обновляем основную информацию о школе
     const response = await $fetch(`/api/schools/${schoolForm.value.id}/basic`, {
       method: 'PUT',
       headers: { 
@@ -1244,9 +1261,11 @@ async function updateSchool() {
     
     console.log('Ответ от сервера:', response);
     
+    // Затем обновляем программы обучения через отдельный API
+    await updateEducationalPrograms(schoolForm.value.id, schoolForm.value.programs);
+    
     // Обновляем статусы отзывов
     if (schoolForm.value.externalReviews && schoolForm.value.externalReviews.length > 0) {
-      // Отслеживаем отзывы, которые нужно обновить
       for (const review of schoolForm.value.externalReviews) {
         if (review.id) {
           try {
@@ -1296,6 +1315,46 @@ async function updateSchool() {
     clearMessages()
   } finally {
     isSubmitting.value = false
+  }
+}
+
+// Функция для обновления образовательных программ
+async function updateEducationalPrograms(schoolId, programs) {
+  try {
+    console.log(`Обновление образовательных программ для школы ID ${schoolId}`);
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      console.error('Отсутствует токен авторизации');
+      return;
+    }
+    
+    // Отправляем запрос к специальному API для обновления программ
+    const response = await $fetch(`/api/schools/${schoolId}/programs`, {
+      method: 'PUT',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: {
+        programs: programs
+      }
+    });
+    
+    console.log('Ответ от сервера после обновления программ:', response);
+    
+    if (response && response.data && response.data.programs) {
+      console.log(`Успешно обновлено ${response.data.programs.length} программ`);
+      return response.data.programs;
+    } else {
+      console.warn('Сервер не вернул данные обновленных программ');
+      return [];
+    }
+  } catch (error) {
+    console.error('Ошибка при обновлении образовательных программ:', error);
+    errorMessage.value = 'Не удалось обновить образовательные программы. Пожалуйста, попробуйте позже.';
+    clearMessages();
+    return [];
   }
 }
 
@@ -1449,7 +1508,15 @@ function resetForm() {
 
 // Добавление программы
 function addProgram() {
-  schoolForm.value.programs.push({ name: '' })
+  schoolForm.value.programs.push({ 
+    name: '',
+    code: '',
+    description: '',
+    duration: '',
+    price: null,
+    category: '',
+    examRequirements: []
+  })
 }
 
 // Удаление программы

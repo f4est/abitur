@@ -143,14 +143,45 @@ const loadExternalReviews = async () => {
   isLoading.value = true;
   
   try {
-    // Здесь должен быть API запрос к сервису отзывов
-    // Временное решение - показываем только интерфейс без отзывов
+    // Загружаем отзывы из базы данных через API
+    const response = await fetch(`/api/external-reviews/list?schoolId=${props.schoolId}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.body) {
+        reviews.value = data.body;
+        totalReviews.value = data.body.length;
+        
+        // Вычисление среднего рейтинга
+        if (reviews.value.length > 0) {
+          const totalRating = reviews.value.reduce((sum, review) => sum + review.rating, 0);
+          rating.value = totalRating / reviews.value.length;
+        }
+        
+        console.log(`Загружено ${reviews.value.length} отзывов для учебного заведения ID ${props.schoolId}`);
+      } else {
+        reviews.value = [];
+        totalReviews.value = 0;
+        rating.value = 0;
+      }
+    } else {
+      console.error('Ошибка при загрузке отзывов:', response.status);
+      reviews.value = [];
+      totalReviews.value = 0;
+      rating.value = 0;
+    }
+    
+    // Создаем URL для ссылки на 2GIS по адресу школы
+    if (props.schoolAddress) {
+      externalUrl.value = `https://2gis.ru/search/${encodeURIComponent(props.schoolAddress)}`;
+    } else {
+      externalUrl.value = `https://2gis.ru/search/${encodeURIComponent(props.schoolName)}`;
+    }
+  } catch (error) {
+    console.error('Ошибка при загрузке отзывов:', error);
     reviews.value = [];
     totalReviews.value = 0;
     rating.value = 0;
-    externalUrl.value = `https://2gis.ru/search/${encodeURIComponent(props.schoolName)}`;
-  } catch (error) {
-    console.error('Ошибка при загрузке отзывов:', error);
   } finally {
     isLoading.value = false;
   }
